@@ -44,7 +44,10 @@
 <details>
 <summary>📚 Euro Truck Simulator 2 / American Truck Simulator Tutorials (click to expand)</summary>
 
-### Using in Euro Truck Simulator 2 / American Truck Simulator
+### ⚠️ Important
+**Before proceeding, create a backup of your `controls.sii` file**.
+
+### -Using in Euro Truck Simulator 2 / American Truck Simulator:
 
 1. Make sure all gears are connected to vJoy buttons in the app (default bindings are included).  
 2. Open the app, then launch the game (*Right-click* lets you look around temporarily).  
@@ -52,7 +55,7 @@
 4. Scroll to **H-Shifter** and map all gears and togglers.  
 5. Shift gears with your mouse while holding **Right Click** to look around.
 
-### Using Mouse Steering
+### -Using Mouse Steering:
 
 1. Enable **Mouse Steering** in the app.  
 2. Choose **H-Shifter Mouse Device** and **Mouse Steering Device**.  
@@ -62,7 +65,7 @@
 
 > ⚠️ **Warning:** Press **F11** to temporarily turn off mouse steering before pausing or accessing in-game menus.
 
-### Using Experimental Controller Support
+### -Using Experimental Controller Support:
 
 1. Enable **Controller** in the app.  
 2. Bind Look Axis in the game if needed.  
