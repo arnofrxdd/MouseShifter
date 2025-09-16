@@ -42,7 +42,7 @@
 ---
 
 <details>
-<summary>📚 Euro Truck Simulator 2 / American Truck Simulator Tutorials (click to expand)</summary>
+<summary>📚 Guides: Euro Truck Simulator 2 & American Truck Simulator</summary>
 
 ### ⚠️ Important
 **Before proceeding, create a backup of your `controls.sii` file**.
