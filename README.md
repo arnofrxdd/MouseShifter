@@ -4,7 +4,6 @@
 
 > Supports popular sim racing and driving games such as Euro Truck Simulator 2, American Truck Simulator, BeamNG.drive, Project CARS, and more.
 
-
 ---
 
 ## ✨ Features
@@ -12,9 +11,9 @@
 - 🎛️ **Mouse-Based H-Shifter**  
 - 🗂️ **Customizable Gear Layouts**  
 - ⚙️ **12/16 Gearbox Support**  
-- 🎮 **Built-in VJoy Support**  
+- 🎮 **Built-in vJoy Support**  
 - 🕹️ **Experimental Controller Support**  
-- 🎨 **Fully Customizable Controls**
+- 🎨 **Fully Customizable Controls and Layout**
 
 ---
 
@@ -24,9 +23,8 @@
 
 ## 🖥️ Requirements
 
-- Windows 10 / 11  
-- VJoy driver  
-- Optional: DS4Windows for PlayStation controllers  
+- ✅ [vJoy driver](https://sourceforge.net/projects/vjoystick/) – Virtual joystick driver required for input mapping.  
+- ✅ [DS4Windows](https://github.com/ryochan7/ds4windows/releases) – Optional tool for PlayStation controllers to enable XInput support.
 
 ---
 
@@ -78,7 +76,7 @@
 
 ## ❓ FAQ
 
-**Q: Why do I need VJoy?**  
+**Q: Why do I need vJoy?**  
 A: Most games do not natively recognize mouse movements or keys as H-shifter inputs. vJoy acts as a **virtual joystick**, allowing your mouse or controller inputs to be mapped as proper gear shifts in the game.
 
 **Q: Why isn’t my MouseShifter knob moving while in-game?**  
@@ -86,7 +84,17 @@ A: **Run MouseShifter as administrator.**
 
 ---
 
+## 📬 Feedback & Feature Requests
+
+You might expect some bugs or issues as this is an evolving tool.  
+I’d love to hear from you—whether it's reporting bugs, requesting new features, or suggesting improvements!
+
+**Best place to reach me:**  
+➡️ [GitHub Issues](https://github.com/yourusername/MouseShifter/issues) – Please create an issue for bugs, feature requests, or feedback.  
+
+---
+
 ## 📝 Notes
 
 - Controller support is experimental; XInput works natively, PS controllers require DS4Windows.  
-- Built-in VJoy ensures smooth compatibility with games that support virtual joysticks.
+- Built-in vJoy ensures smooth compatibility with games that support virtual joysticks.
