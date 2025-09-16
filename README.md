@@ -84,6 +84,10 @@ A: Most games do not recognize mouse movements or keys as H-shifter inputs. vJoy
 **Q: Why isn’t my MouseShifter knob moving while in-game?**  
 A: ✅ **Run MouseShifter as administrator.**
 
+**Q: When will Linux be supported?**  
+A: 🐧 Not very soon – Linux support is not on the roadmap at the moment, but it’s something to keep in mind for the future.
+
+
 ---
 
 ## 📬 Feedback & Feature Requests
