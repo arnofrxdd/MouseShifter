@@ -76,11 +76,12 @@
 
 ### 🎮 Using Experimental Controller Support
 
-1. Enable **Controller** in the app.  
-2. Bind Look Axis in the game if needed.  
-3. Select your **XInput controller** as an additional device.  
-4. Bind H-Shifter togglers, buttons, acceleration, and brake axes.  
-5. Use the **Assist Knob button** to shift gears.
+1. Enable **Controller** in the app.
+2. DO NOT SELECT Your controller yet as an additional device.
+3. Bind Look Axis in the game if needed.  
+4. Select your **XInput controller** as an additional device.  
+5. Bind H-Shifter togglers, buttons, acceleration, and brake axes.  
+6. Use the **Assist Knob button** to shift gears.
 
 ---
 
