@@ -47,7 +47,7 @@
 ### ⚠️ Important
 - **Before proceeding, create a backup of your `controls.sii` file**.  
 - **Disable Steam Cloud**
-
+- **Run MouseShifter as Admin**
 ---
 
 ### 🚛 Using in Euro Truck Simulator 2 / American Truck Simulator
