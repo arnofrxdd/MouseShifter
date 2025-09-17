@@ -53,6 +53,12 @@
 - **Before proceeding, create a backup of your `controls.sii` file**.  
 - **Disable Steam Cloud**
 - **Run MouseShifter as Admin**
+- **Make sure you have atleast 12 buttons set and all axes enabled in vJoy settings, must always be vJoy Device: 1**.
+
+  Start -> Search "Configure vJoy"
+  
+![vJoyConfigure](ETS2/configurevjoy.png)
+
 ---
 
 ### 🚛 Using in Euro Truck Simulator 2 / American Truck Simulator
