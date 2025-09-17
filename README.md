@@ -34,8 +34,9 @@
 2. Run `MouseShifter.exe`.  
 3. Set up your gear layout, knob, and sensitivity settings.  
 4. Move the window where you want the overlay and press **Tab**.  
-5. Start your game.  
-6. Use the overlay to shift gears with your mouse.
+5. Start your game.
+6. Bind Gear controls.
+7. Use the overlay to shift gears with your mouse.
 
 > ⚠️ **Note:** If the overlay doesn’t show up or work correctly, try switching your game to **borderless mode**.
 
