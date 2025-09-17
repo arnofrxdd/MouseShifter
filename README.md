@@ -13,7 +13,8 @@
 - 🗂️ **Customizable Gear Layouts**  
 - ⚙️ **12/16 Gearbox Support**  
 - 🎮 **Built-in vJoy Support**  
-- 🕹️ **Experimental Controller Support**  
+- 🕹️ **Experimental Controller Support**
+- 🛞 **Dual Mouse Control (Steering + Shifting)**
 - 🎨 **Fully Customizable Controls and Layout**
 
 ---
