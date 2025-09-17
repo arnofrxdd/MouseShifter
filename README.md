@@ -57,8 +57,8 @@
 
 ### 🚛 Using in Euro Truck Simulator 2 / American Truck Simulator
 
-1. Make sure all gears are connected to vJoy buttons in the app (default bindings are included).  
-2. Open the app, then launch the game (*Right-click* lets you look around temporarily).  
+1. Make sure all gears are bound to vJoy buttons in the app (default bindings are included).
+2. Open the app, then launch the game.  
 3. Go to **Options → Controls**, and choose **Keyboard + vJoy Device** as the main device.  
 4. Scroll to **H-Shifter** and map all gears and togglers.  
 5. Shift gears with your mouse while holding **Right Click** to look around.
