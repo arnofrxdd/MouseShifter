@@ -60,9 +60,12 @@
 1. Make sure all gears are bound to vJoy buttons in the app (default bindings are included).
 2. Open the app, then launch the game.  
 3. Go to **Options → Controls**, and choose **Keyboard + vJoy Device** as the main device.  
-4. Scroll to **H-Shifter** and map all gears and togglers.  
-5. Shift gears with your mouse while holding **Right Click** to look around.
 
+![vJoy Select](ETS2/Keyboard+vJoy.png)
+
+4. Scroll to **H-Shifter** and map all gears and togglers.  
+![Map H-Shifter](ETS2/H-Shifter%20ETS2.png)
+5. Shift gears with your mouse while holding **Right Click** to look around.
 ---
 
 ### 🖱 Using Mouse Steering
@@ -72,6 +75,7 @@
 3. Within the game, go to **Options → Controls**, and:  
    - ❌ **Do not** enable Keyboard + Mouse Steering.  
 4. Bind the steering axis, and optionally bind the acceleration or brake axes for mouse throttle or brake.
+![MouseSteer](ETS2/MouseSteer.png)
 
 > ⚠️ **Warning:** Press **F11** to temporarily turn off mouse steering before pausing or accessing in-game menus.
 
