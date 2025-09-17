@@ -119,7 +119,7 @@ You might encounter some bugs or issues as this tool continues to develop.
 I’d appreciate your feedback—whether it’s reporting bugs, asking for new features, or suggesting improvements!
 
 **The best way to contact me:**  
-➡️ [GitHub Issues](https://github.com/yourusername/MouseShifter/issues) – Please create an issue for bugs, feature requests, or feedback.
+➡️ [GitHub Issues](https://github.com/arnofrxdd/MouseShifter/issues) – Please create an issue for bugs, feature requests, or feedback.
 
 ---
 
