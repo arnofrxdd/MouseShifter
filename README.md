@@ -8,6 +8,7 @@
 
 ---
 [![⬇️ Download MouseShifter](https://img.shields.io/badge/Download-MouseShifter-blue?style=for-the-badge)](https://github.com/arnofrxdd/MouseShifter/releases/download/Release/MouseShifter.zip)
+[![☕ Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=000000)](https://buymeacoffee.com/harshitparg)
 
 ## ✨ Features
 
@@ -35,17 +36,34 @@
 ## ⚡ How to Use
 
 1. Download the latest release from GitHub and extract the ZIP file.  
+
+<details>
+<summary>⚠️ IMPORTANT</summary>
+
+- **Make sure you have at least 12 buttons set and all axes enabled in vJoy settings, must always be vJoy Device: 1**.
+
+Start -> Search "Configure vJoy"
+
+![vJoyConfigure](ETS2/configurevjoy.png)
+
+</details>
+
 2. Run `MouseShifter.exe` as Administrator.  
 3. Position the overlay window where you want it, then press **Tab**.  
 4. Press **F12** to temporarily disable the knob.  
 5. Launch your game.  
 6. Open the control settings and bind your gear controls.  
-![Binding](./buttonbindings.gif)
+![Binding](./buttonbindings.gif)  
 7. Done — you’re ready to play!  
 
 > ⚠️ **Tip:** If the overlay doesn’t appear or function properly, try setting your game to **borderless mode**.
 
 ---
+
+
+
+
+
 
 <details>
 <summary>📚 Guides: Euro Truck Simulator 2 & American Truck Simulator</summary>
@@ -84,8 +102,8 @@
 4. Bind the steering axis, and optionally bind the acceleration or brake axes for mouse throttle or brake.
 ![MouseSteer](ETS2/MouseSteer.png)
 
-> ⚠️ **Warning:** Press **F11** to temporarily turn off mouse steering before pausing or accessing in-game menus.
-
+> ⚠️ **Warning:** Press **F11** to temporarily turn off mouse steering before pausing or accessing in-game menus.  
+> ℹ️ **Tip:** If you want to use **dual mouse steering + H-Shifter**, see the [Dual Mouse Setup](#dual-mouse-setup) below.
 ---
 
 ### 🛞 Using Wheel or Pedals
@@ -113,6 +131,45 @@
 
 </details>
 
+<details>
+<summary>🖱️ Mouse Steering Guide</summary>
+
+### **Single Mouse Setup**
+
+1. Open the **MouseShifter** app.  
+2. Enable **Mouse Steering**.  
+3. Select **H-Shifter Mouse Device**: choose your USB mouse for H-Shifter.  
+4. Select **Mouse Steering Device**: select the same mouse as the H-Shifter.  
+5. Your H-Shifter will now be temporarily disabled; hold down the **Activate Knob Key** to use H-Shifter.  
+6. Open your game and go to **Control Options**.  
+   - **Do NOT enable Mouse Steering** if your game enables it by default.  
+7. Bind your steering:
+   - For key bindings: select left/right and move your mouse accordingly.  
+   - For steering axes bindings: select the axis and move your mouse (method may vary per game).  
+8. If you haven’t already, bind H-Shifter buttons.  
+9. Done! You can now play with mouse steering while holding the **Activate Knob Key** to use H-Shifter.  
+
+> ⚠️ **Note:** Always press **F11** to temporarily disable mouse steering before pausing the game or accessing menus.
+
+---
+
+### **Dual Mouse Setup**
+
+1. Open the **MouseShifter** app.  
+2. Enable **Mouse Steering**.  
+3. Select **H-Shifter Mouse Device**: choose the mouse you want for H-Shifter.  
+4. Select **Mouse Steering Device**: choose your second mouse for steering.  
+5. Open your game and go to **Control Options**.  
+   - **Do NOT enable Mouse Steering** if your game enables it by default.  
+6. Bind your steering(method may vary per game):
+   - For key/button bindings: select left/right and move your steering mouse accordingly.  
+   - For steering axes bindings: select the axis and move your mouse.   
+7. If you haven’t already, bind H-Shifter buttons.  
+8. Done! You can now play with mouse steering enabled while using the second mouse for H-Shifter.  
+
+> ⚠️ **Note:** Always press **F11** to temporarily disable mouse steering before pausing the game or accessing menus.
+
+</details>
 
 ---
 
