@@ -87,6 +87,16 @@
 
 ---
 
+### 🛞 Using Wheel or Pedals
+
+1. In the game, go to **Options → Controls**.  
+2. Keep **Keyboard + vJoy Device** selected as your primary device.  
+3. Pick your **wheel or pedals** as an additional device.  
+4. Bind the steering, throttle, brake, or clutch as needed.  
+5. That’s it — you’re ready to drive!
+
+---
+
 ### 🎮 Using Experimental Controller Support
 
 1. Enable **Controller** in the app.
