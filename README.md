@@ -173,17 +173,25 @@ Start -> Search "Configure vJoy"
 
 ---
 
-## ❓ FAQ
+## ❓ FAQ  
 
 **Q: Why do I need vJoy?**  
-A: Most games do not recognize mouse movements or keys as H-shifter inputs. vJoy serves as a **virtual joystick**, so your mouse or controller inputs can be mapped as proper gear shifts in the game.
+A: Most games do not recognize mouse movements or keys as H-shifter inputs. vJoy serves as a **virtual joystick**, so your mouse or controller inputs can be mapped as proper gear shifts in the game.  
 
 **Q: Why isn’t my MouseShifter knob moving while in-game?**  
-A: ✅ **Run MouseShifter as administrator.**
+A: ✅ **Run MouseShifter as administrator.**  
 
 **Q: When will Linux be supported?**  
-A: 🐧 Not very soon – Linux support is not on the roadmap at the moment, but it’s something to keep in mind for the future.
+A: 🐧 Not very soon – Linux support is not on the roadmap at the moment, but it’s something to keep in mind for the future.  
 
+**Q: Why isn’t my reverse gear binding?**  
+A: 🔄 Make sure you have **at least 12 buttons** set and **all axes enabled** in vJoy settings.  
+It must always be on **vJoy Device: 1**.  
+To fix:  
+- Open Start → Search **“Configure vJoy”**  
+- Set **Buttons: 12+**  
+- Enable **all axes**  
+- Apply changes  
 
 ---
 
