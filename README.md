@@ -32,17 +32,18 @@
 
 ---
 
-## 🚀 Installation
+## ⚡ How to Use
 
-1. Download the latest version from GitHub.  
-2. Run `MouseShifter.exe`.  
-3. Set up your gear layout, knob, and sensitivity settings.  
-4. Move the window where you want the overlay and press **Tab**.  
-5. Start your game.
-6. Bind Gear controls.
-7. Use the overlay to shift gears with your mouse.
+1. Download the latest release from GitHub and extract the ZIP file.  
+2. Run `MouseShifter.exe` as Administrator.  
+3. Position the overlay window where you want it, then press **Tab**.  
+4. Press **F12** to temporarily disable the knob.  
+5. Launch your game.  
+6. Open the control settings and bind your gear controls.  
+![Binding](buttonbindings.gif)
+7. Done — you’re ready to play!  
 
-> ⚠️ **Note:** If the overlay doesn’t show up or work correctly, try switching your game to **borderless mode**.
+> ⚠️ **Tip:** If the overlay doesn’t appear or function properly, try setting your game to **borderless mode**.
 
 ---
 
