@@ -40,7 +40,7 @@
 4. Press **F12** to temporarily disable the knob.  
 5. Launch your game.  
 6. Open the control settings and bind your gear controls.  
-![Binding](buttonbindings.gif)
+![Binding](./buttonbindings.gif)
 7. Done — you’re ready to play!  
 
 > ⚠️ **Tip:** If the overlay doesn’t appear or function properly, try setting your game to **borderless mode**.
