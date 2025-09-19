@@ -67,7 +67,9 @@ Start -> Search "Configure vJoy"
 
 <details>
 <summary>📚 Guides: Euro Truck Simulator 2 & American Truck Simulator</summary>
-
+  
+Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
+  
 ### ⚠️ Important
 - **Before proceeding, create a backup of your `controls.sii` file**.  
 - **Disable Steam Cloud**
