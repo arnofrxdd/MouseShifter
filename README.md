@@ -191,7 +191,10 @@ To fix:
 - Open Start → Search **“Configure vJoy”**  
 - Set **Buttons: 12+**  
 - Enable **all axes**  
-- Apply changes  
+- Apply changes
+  
+### Q: Will the source code be available?  
+**A:** 📂 Yes – the source code will be released soon. I’m currently refactoring it to make it cleaner, easier to understand, and more developer-friendly for anyone who wants to tweak or contribute.  
 
 ---
 
