@@ -7,7 +7,7 @@
 **⚠ Note:** This doesn’t disable mouse steering — you can still use mouse steering while using MouseShifter! It simply adds gear shifting functionality without interfering with your existing controls.
 
 ---
-[![⬇️ Download MouseShifter](https://img.shields.io/badge/Download-MouseShifter-blue?style=for-the-badge)](https://github.com/arnofrxdd/MouseShifter/releases/download/Release/MouseShifter.zip)
+[![⬇️ Download MouseShifter](https://img.shields.io/badge/Download-MouseShifter-blue?style=for-the-badge)](https://github.com/arnofrxdd/MouseShifter/releases/download/Update/MouseShifter.zip)
 [![☕ Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=000000)](https://buymeacoffee.com/harshitparg)
 
 ## ✨ Features
