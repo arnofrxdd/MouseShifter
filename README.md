@@ -173,6 +173,67 @@ Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
 
 </details>
 
+<details>
+<summary>🎮 Forza Horizon 5 Guides</summary>
+
+### ⚠️ Before You Start
+- Make sure you have control bindings for **Shifter togglers** set up (do **not** use the mouse).  
+- Use any rarely used key in-game for bindings.  
+
+![MouseShifter Setup](Forza/MouseShifter.png)
+
+> **Tip:** If the game crashes when starting with MouseShifter:
+> 1. Close MouseShifter.
+> 2. Open Forza Horizon 5.
+> 3. Then reopen MouseShifter.
+
+---
+
+### 🛠 Setting Up Wheel Controls
+
+1. Open **Forza Horizon 5**.  
+2. Go to **Options → Controls → Change Input Mapping → Wheel**.  
+3. Select **Select Layout** and press an arrow key to load a custom wheel profile.  
+
+![Select Layout](Forza/arrow.png)
+
+4. Scroll down to the **Gears** section and start binding gears accordingly.  
+
+![Bind Gears](Forza/gear.gif)
+
+---
+
+### 🔧 Bypassing Required Bindings
+
+1. Scroll up to see **Required Bindings/Buttons**.  
+2. Use the **Shifter togglers** button you set up in the first step.  
+3. Assign all required bindings to the same button — this tricks the game into allowing H-Shifter use.  
+
+![Bypass Required Bindings](Forza/bypass.gif)
+
+---
+
+### 🖱️ Using Mouse Steering / Throttle / Brake
+
+1. Open the **MouseShifter** app and enable **Mouse Steering**.  
+2. Be careful: don’t move the mouse too much, or the game may get confused.  
+   - **If it does**, disable Mouse Steering from the app and re-enable it, or restart the game.  
+3. Bind the **Steering axis** and **Acceleration/Brake axis** (enable the combined toggle).  
+
+![Mouse Steering](Forza/mousesteer.gif)
+
+---
+
+### ✅ Final Steps
+
+- Go back to the game.  
+- You should now see the **H-Shifter working**.  
+- You’re ready to drive!  
+
+![Preview](Forza/preview.gif)
+
+</details>
+
 ---
 
 ## ❓ FAQ  
