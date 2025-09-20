@@ -182,6 +182,10 @@ Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
 
 ![MouseShifter Setup](Forza/MouseShifter.png)
 
+- Make sure you have atleast 12 buttons set and all axes enabled in vJoy settings, must always be vJoy Device: 1.
+
+Start -> Search "Configure vJoy"
+
 > **Tip:** If the game crashes when starting with MouseShifter:
 > 1. Close MouseShifter.
 > 2. Open Forza Horizon 5.
