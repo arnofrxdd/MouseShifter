@@ -213,7 +213,7 @@ Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
 
 ---
 
-### 🖱️ Using Mouse Steering / Throttle / Brake
+### 🖱️ Using Mouse Steering / Throttle / Brake (Optional)
 
 1. Open the **MouseShifter** app and enable **Mouse Steering**.  
 2. Be careful: don’t move the mouse too much, or the game may get confused.  
