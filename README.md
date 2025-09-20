@@ -207,7 +207,9 @@ Start -> Search "Configure vJoy"
 
 ---
 
-### 🔧 Bypassing Required Bindings
+### 🔧 Bypassing Required Bindings 
+
+(YOU CAN SKIP THIS STEP IF HAVE A WHEEL.)
 
 1. Scroll up to see **Required Bindings/Buttons**.  
 2. Use the **Shifter togglers** button you set up in the first step.  
