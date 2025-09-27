@@ -239,6 +239,30 @@ Start -> Search "Configure vJoy"
 ![Preview](Forza/preview.gif)
 
 </details>
+<details>
+<summary>🕹️ Scroll to Clutch Guide</summary>
+
+### Enable Scroll-to-Clutch in MouseShifter
+
+- Open the **MouseShifter** app
+- Enable **Scroll to Clutch**
+- Adjust any sensitivity or direction options
+
+### In-Game Setup
+
+- Open your game and go to **Control Options**
+- Bind the **Clutch Axis** to your scroll wheel (or the axis assigned by MouseShifter)
+
+> ⚠️ **Tip:** Make sure no other controls conflict with the scroll wheel. If the clutch behaves incorrectly, disable and re-enable Scroll-to-Clutch in the app
+
+### ✅ Final Steps
+
+- Your scroll wheel now works as a clutch!
+- You can engage and release it smoothly while driving
+- Combine with H-Shifter or Mouse Steering for full control
+
+</details>
+
 
 ---
 
