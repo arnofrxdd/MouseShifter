@@ -287,8 +287,8 @@ To fix:
 - Apply changes
 - Restart MouseShifter.
   
-### Q: Will the source code be available?  
-**A:** 📂 Yes – the source code will be released soon. I’m currently refactoring it to make it cleaner, easier to understand, and more developer-friendly for anyone who wants to tweak or contribute.  
+**Q: Will the source code be available?**
+A: 📂 Yes – the source code will be released soon. I’m currently refactoring it to make it cleaner, easier to understand, and more developer-friendly for anyone who wants to tweak or contribute.  
 
 ---
 
