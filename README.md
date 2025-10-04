@@ -119,6 +119,7 @@ Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
 ---
 
 ### 🎮 Using Experimental Controller Support
+Detailed Video Guide: https://www.youtube.com/watch?v=7qyDuhJJklw
 
 1. Enable **Controller** in the app.
 2. DO NOT SELECT Your controller yet as an additional device.
