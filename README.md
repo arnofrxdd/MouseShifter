@@ -298,30 +298,32 @@ Use mouse blocking if:
 </details>
 
 ---
-
 ## ❓ FAQ  
 
 **Q: Why do I need vJoy?**  
 A: Most games do not recognize mouse movements or keys as H-shifter inputs. vJoy serves as a **virtual joystick**, so your mouse or controller inputs can be mapped as proper gear shifts in the game.  
 
-**Q: Why isn’t my MouseShifter knob moving while in-game?**  
+**Q: Why isn't my MouseShifter knob moving while in-game?**  
 A: ✅ **Run MouseShifter as administrator.**  
 
 **Q: When will Linux be supported?**  
-A: 🐧 Not very soon – Linux support is not on the roadmap at the moment, but it’s something to keep in mind for the future.  
+A: 🐧 Not very soon – Linux support is not on the roadmap at the moment, but it's something to keep in mind for the future.  
 
-**Q: Why isn’t my reverse gear binding?**  
+**Q: Why isn't my reverse gear binding?**  
 A: 🔄 Make sure you have **at least 12 buttons** set and **all axes enabled** in vJoy settings.  
 It must always be on **vJoy Device: 1**.  
 To fix:  
-- Open Start → Search **“Configure vJoy”**  
+- Open Start → Search **"Configure vJoy"**  
 - Set **Buttons: 12+**  
 - Enable **all axes**  
 - Apply changes
 - Restart MouseShifter.
   
-**Q: Will the source code be available?**
-A: 📂 Yes – the source code will be released soon. I’m currently refactoring it to make it cleaner, easier to understand, and more developer-friendly for anyone who wants to tweak or contribute.  
+**Q: Will the source code be available?**  
+A: 📂 Yes – the source code will be released soon. I'm currently refactoring it to make it cleaner, easier to understand, and more developer-friendly for anyone who wants to tweak or contribute.
+
+**Q: My antivirus flagged MouseShifter as a virus! Is it safe?**  
+A: Yes, the app is completely safe. This is a false positive. Antivirus software often flags applications that are not digitally signed and that interact with games and input devices (a process called "hooking") as suspicious, because that's also how some malware behaves. MouseShifter needs to do this to function—for example, to enable the mouse-blocking feature. The code is not malicious, and the source code will be available soon for anyone to verify.
 
 ---
 
