@@ -268,26 +268,26 @@ Start -> Search "Configure vJoy"
 <details>
 <summary>🛡️ Mouse/XInput Blocking Guide</summary>
 
-### **When to Use This Feature**
+### **When to Use This Feature:**
 Use mouse blocking if:
 - The game doesn't allow RMB to look around
 - Your H-Shifter moves while trying to look in-game
 - You want to toggle between Shifter and looking
 
-### **Mouse Blocking Setup**
+### **Mouse Blocking Setup:**
 
 1. Select your **game process** from the list
 2. Click the **"Mouse Free"** button - it will change to **"Mouse Blocked"**
 3. Your in-game mouse is now blocked and will only unlock when you hold down **RMB**
 4. Use **Disabling Knob Movement** to restore normal controls
 
-### **XInput Blocking Setup**
+### **XInput Blocking Setup:**
 
 1. Follow the same steps as mouse blocking
 2. Click **"XInput Free"** to change it to **"XInput Blocked"**
 3. The **Knob Assist button** will affect how blocking works
 
-![Mouse Blocking Interface](screenshots/mouse-blocking.png)
+![Mouse Blocking Interface](mouse-blocking.png)
 
 > ⚠️ **Important Notes:**
 > - This feature is **experimental** and may not work with PlayStation controllers using DS4Windows
