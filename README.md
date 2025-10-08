@@ -4,7 +4,7 @@
 
 > It supports popular sim racing and driving games like *Euro Truck Simulator 2*, *American Truck Simulator*, *BeamNG.drive*, *Project CARS*, and more.
 
-**⚠ Note:** This doesn’t disable mouse steering — you can still use mouse steering while using MouseShifter! It simply adds gear shifting functionality without interfering with your existing controls.
+**⚠ Note:** This doesn’t disable mouse steering/looking — you can still use mouse steering/looking while using MouseShifter! It simply adds gear shifting functionality without interfering with your existing controls.
 
 ---
 [![⬇️ Download MouseShifter](https://img.shields.io/badge/Download-MouseShifter-blue?style=for-the-badge)](https://github.com/arnofrxdd/MouseShifter/releases/download/v2.0-update/MouseShifter.zip)
