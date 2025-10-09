@@ -13,7 +13,6 @@
 ## ✨ Features
 
 - 🎛️ **Mouse-Based H-Shifter**  
-- 🗂️ **Customizable Gear Layouts**  
 - ⚙️ **12/16 Gearbox Support**  
 - 🎮 **Built-in vJoy Support**  
 - 🕹️ **Experimental Controller Support**
