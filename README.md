@@ -23,7 +23,7 @@
 
 ---
 
-![MouseShifter](MouseShifter.png)
+![MouseShifter](https://github.com/arnofrxdd/MouseShifter/raw/assets/MouseShifter.png)
 
 ---
 
@@ -45,7 +45,7 @@
 
 Start -> Search "Configure vJoy"
 
-![vJoyConfigure](ETS2/configurevjoy.png)
+![vJoyConfigure](https://github.com/arnofrxdd/MouseShifter/raw/assets/ETS2/configurevjoy.png)
 
 </details>
 
@@ -54,7 +54,7 @@ Start -> Search "Configure vJoy"
 4. Press **F12** to temporarily disable the knob.  
 5. Launch your game.  
 6. Open the control settings and bind your gear controls.  
-![Binding](./buttonbindings.gif)  
+![Binding](https://github.com/arnofrxdd/MouseShifter/raw/assets/buttonbindings.gif)
 7. Done — you’re ready to play!  
 
 > ⚠️ **Tip:** If the overlay doesn’t appear or function properly, try setting your game to **borderless mode**.
@@ -79,7 +79,7 @@ Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
 
   Start -> Search "Configure vJoy"
   
-![vJoyConfigure](ETS2/configurevjoy.png)
+![vJoyConfigure](https://github.com/arnofrxdd/MouseShifter/raw/assets/ETS2/configurevjoy.png)
 
 ---
 
@@ -89,10 +89,10 @@ Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
 2. Open the app, then launch the game.  
 3. Go to **Options → Controls**, and choose **Keyboard + vJoy Device** as the main device.  
 
-![vJoy Select](ETS2/Keyboard+vJoy.png)
+![vJoyConfigure](https://github.com/arnofrxdd/MouseShifter/raw/assets/ETS2/configurevjoy.png)
 
 4. Scroll to **H-Shifter** and map all gears and togglers.  
-![Map H-Shifter](ETS2/H-Shifter%20ETS2.png)
+![Map H-Shifter](https://github.com/arnofrxdd/MouseShifter/raw/assets/ETS2/H-Shifter%20ETS2.png)
 5. Shift gears with your mouse while holding **Right Click** to look around.
 ---
 
@@ -103,7 +103,7 @@ Video Guide: https://www.youtube.com/watch?v=w5_lFoCMoK4
 3. Within the game, go to **Options → Controls**, and:  
    - ❌ **Do not** enable Keyboard + Mouse Steering.  
 4. Bind the steering axis, and optionally bind the acceleration or brake axes for mouse throttle or brake.
-![MouseSteer](ETS2/MouseSteer.png)
+![MouseSteer](https://github.com/arnofrxdd/MouseShifter/raw/assets/ETS2/MouseSteer.png)
 
 > ⚠️ **Warning:** Press **F11** to temporarily turn off mouse steering before pausing or accessing in-game menus.  
 > ℹ️ **Tip:** If you want to use **dual mouse steering + H-Shifter**, see the [Dual Mouse Setup](#dual-mouse-setup) below.
@@ -131,7 +131,7 @@ Detailed Video Guide: https://www.youtube.com/watch?v=7qyDuhJJklw
 
 ---
 
-![ETS2 Setup](ETS2.gif)
+![ETS2 Setup](https://github.com/arnofrxdd/MouseShifter/raw/assets/ETS2.gif)
 
 </details>
 
@@ -182,7 +182,7 @@ Detailed Video Guide: https://www.youtube.com/watch?v=7qyDuhJJklw
 - Make sure you have control bindings for **Shifter togglers** set up (do **not** use the mouse).  
 - Use any rarely used key in-game for bindings.  
 
-![MouseShifter Setup](Forza/MouseShifter.png)
+![MouseShifter Setup](https://github.com/arnofrxdd/MouseShifter/raw/assets/Forza/MouseShifter.png)
 
 - Make sure you have atleast 12 buttons set and all axes enabled in vJoy settings, must always be vJoy Device: 1.
 
@@ -201,11 +201,11 @@ Start -> Search "Configure vJoy"
 2. Go to **Options → Controls → Change Input Mapping → Wheel**.  
 3. Select **Select Layout** and press an arrow key to load a custom wheel profile.  
 
-![Select Layout](Forza/arrow.png)
+![Select Layout](https://github.com/arnofrxdd/MouseShifter/raw/assets/Forza/arrow.png)
 
 4. Scroll down to the **Gears** section and start binding gears accordingly.  
 
-![Bind Gears](Forza/gear.gif)
+![Bind Gears](https://github.com/arnofrxdd/MouseShifter/raw/assets/Forza/gear.gif)
 
 ---
 
@@ -217,7 +217,7 @@ Start -> Search "Configure vJoy"
 2. Use the **Shifter togglers** button you set up in the first step.  
 3. Assign all required bindings to the same button — this tricks the game into allowing H-Shifter use.  
 
-![Bypass Required Bindings](Forza/bypass.gif)
+![Bypass Required Bindings](https://github.com/arnofrxdd/MouseShifter/raw/assets/Forza/bypass.gif)
 
 ---
 
@@ -228,7 +228,7 @@ Start -> Search "Configure vJoy"
    - **If it does**, disable Mouse Steering from the app and re-enable it, or restart the game.  
 3. Bind the **Steering axis** and **Acceleration/Brake axis** (enable the combined toggle).  
 
-![Mouse Steering](Forza/mousesteer.gif)
+![Mouse Steering](https://github.com/arnofrxdd/MouseShifter/raw/assets/Forza/mousesteer.gif)
 
 ---
 
@@ -238,7 +238,7 @@ Start -> Search "Configure vJoy"
 - You should now see the **H-Shifter working**.  
 - You’re ready to drive!  
 
-![Preview](Forza/preview.gif)
+![Preview](https://github.com/arnofrxdd/MouseShifter/raw/assets/Forza/preview.gif)
 
 </details>
 <details>
@@ -287,7 +287,7 @@ Use mouse blocking if:
 2. Click **"XInput Free"** to change it to **"XInput Blocked"**
 3. The **Knob Assist button** will affect how blocking works
 
-![Mouse Blocking Interface](mouse-blocking.png)
+![Mouse Blocking Interface](https://github.com/arnofrxdd/MouseShifter/raw/assets/mouse-blocking.png)
 
 > ⚠️ **Important Notes:**
 > - This feature is **experimental** and may not work with PlayStation controllers using DS4Windows
