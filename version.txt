@@ -1,1 +1,5 @@
 2.1
+---
+- Added silent updater
+- Fixed extraction bug
+- Improved UI responsiveness
