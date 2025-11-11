@@ -1,0 +1,5 @@
+﻿  RawMouse.cpp
+C:\Users\bazzu\source\repos\RawMouse\RawMouse\RawMouse.cpp(79,47): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\bazzu\source\repos\RawMouse\RawMouse\RawMouse.cpp(79,34): warning C4244: 'initializing': conversion from 'double' to 'const int', possible loss of data
+C:\Users\bazzu\source\repos\RawMouse\RawMouse\RawMouse.cpp(1324,38): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+  RawMouse.vcxproj -> C:\Users\bazzu\source\repos\RawMouse\Debug\RawMouse.exe
