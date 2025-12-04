@@ -166,7 +166,7 @@ const float diagMax = 3.0f;
 const int baseIntersectionRadius = 30; // default radius
 bool isRightButtonHeld = false;
 bool bindingModeForRAxis = false;
-RECT bindingModeForAxisToggle; 
+RECT bindingModeForAxisToggle;
 const int baseEnterVerticalThreshold = 20; // default
 int enterVerticalThreshold = int(baseEnterVerticalThreshold * diagonalAssist);
 
@@ -217,7 +217,16 @@ bool useAxisSmoothing = false; // Toggle for interdependent smoothing
 float axisSmoothingFactor = 0.9f; // Single variable to control smoothing (0.0 = no effect, 1.0 = max effect)
 RECT useAxisSmoothingToggle;
 bool draggingAxisSmoothingFactorSlider = false;
+bool draggingSmoothScrollSlider = false;
+bool draggingBrakeResistanceSlider = false;
+bool draggingAccelerationResistanceSlider = false;
 RECT axisSmoothingFactorSlider;
+static float smoothScrollSpeed = 8.0f;  // Adjust for smoothness
+RECT smoothScrollSlider;
+float brakeresistanceFactor = 20.0f;
+float accelerationResistanceFactor = 20.0f;  // Add this new variable
+RECT brakeresistanceSlider;
+RECT accelerationresistanceSlider;
 LONG axisMin = 0;
 LONG axisMax = 0;
 LONG axisMinX = 0;      // or the minimum value your vJoy X provides
@@ -233,7 +242,7 @@ RECT g_MaxButtonRect;
 float settingsScrollOffsetF = 0.0f; // smooth scroll offset (float)
 int settingsScrollOffset = 0;       // current scroll offset (int)
 bool knobDisabledByF9 = false; // true if F9 disabled knob
-
+int hoveredProfileIndex = -1;  // Track which profile is hovered
 float settingsScrollTarget = 0.0f; // target scroll
 float settingsScrollSpeed = 0.2f;  // smoothing factor (0.0..1.0)
 RECT GetScrolledRect(const RECT& r)
@@ -601,7 +610,7 @@ bool IsInternetAvailable()
     return InternetGetConnectedState(&flags, 0) != 0;
 }
 
-std::string currentVersion = "4.5";
+std::string currentVersion = "5.0";
 bool updateAvailable = false;
 std::string latestVersion = "";
 RECT updateButtonRect;
@@ -1202,6 +1211,18 @@ std::vector<InputToVJoy> inputMap = {
     {MOUSE, 1, 11}, // Left mouse button → vJoy button 3
     {MOUSE, 2, 12}  // Right mouse button → vJoy button 4
 };
+// Profile management
+std::vector<std::string> profileNames;
+int currentProfileIndex = 0;
+bool profileDropdownOpen = false;
+bool creatingNewProfile = false;
+std::string newProfileName = "New Profile";
+RECT profileButtonRect;
+RECT createProfileButtonRect; // Add this with your other profile variables
+// Profile text input
+bool profileTextSelected = false;
+int profileTextSelectionStart = 0;
+int profileTextSelectionEnd = 0;
 std::string GetExeFolder()
 {
     char path[MAX_PATH];
@@ -1836,6 +1857,7 @@ void ResetThrottleBrake()
     SetAxis(joyRz, vjoyDeviceId, HID_USAGE_RZ);
     LeaveCriticalSection(&throttleBrakeCS);
 }
+
 void UpdateVJoyFromMouse(RAWMOUSE& rm, HANDLE hDevice)
 {
     // Persistent toggle flags
@@ -1871,32 +1893,7 @@ void UpdateVJoyFromMouse(RAWMOUSE& rm, HANDLE hDevice)
     }
     wasF9Pressed = isF9Pressed;
     // ----- Scroll → Rx axis test -----
-// ----- Scroll → Rx axis test -----
-    if (useScrollClutch && (rm.usButtonFlags & RI_MOUSE_WHEEL))
-    {
-        SHORT wheelDelta = (SHORT)rm.usButtonData; // +120 / -120
 
-        float scrollBoost = 2.0f;
-        float step = scrollClutchSens * ((float)(axisMax - axisMin) / 100.0f) * scrollBoost;
-
-        // Apply inversion if flag is true
-        if (invertScrollClutchAxis)
-            joyRx -= (LONG)((wheelDelta / 120.0f) * step);
-        else
-            joyRx += (LONG)((wheelDelta / 120.0f) * step);
-
-        // ---- HALF-AXIS MODE ----
-        if (useHalfClutch)
-        {
-            LONG mid = (axisMin + axisMax) / 2;
-            // Restrict range to lower half (mid → max) or upper half (min → mid)
-            joyRx = max(mid, min(axisMax, joyRx));
-        }
-
-        // Clamp final
-        joyRx = max(axisMin, min(axisMax, joyRx));
-        SetAxis(joyRx, vjoyDeviceId, HID_USAGE_RX);
-    }
 
 
     // ----- Mouse steering disabled -----
@@ -1965,6 +1962,54 @@ void UpdateVJoyFromMouse(RAWMOUSE& rm, HANDLE hDevice)
     LONG newJoyX = joyX + (LONG)(rm.lLastX * finalSteeringSensitivity);
     LONG newJoyY = joyY + (LONG)(rm.lLastY * finalAccBrakeSensitivity);
 
+    // ----- BRAKE RESISTANCE FACTOR -----
+    if (brakeresistanceFactor > 0.0f && rm.lLastY > 0) // Only apply resistance when moving downward (-Y direction, brakes)
+    {
+        // Calculate how far we are into the brake range (0.0 to 1.0)
+        // Center is where brakes start, axisMax is full brakes
+        LONG centerY = (axisMin + axisMax) / 2;
+        float brakePosition = (float)(newJoyY - centerY) / (float)(axisMax - centerY);
+
+        // Clamp brake position between 0 and 1
+        brakePosition = max(0.0f, min(1.0f, brakePosition));
+
+        // Apply resistance: higher resistance as brake position increases
+        float resistance = brakeresistanceFactor * brakePosition;
+        float resistanceMultiplier = 1.0f / (1.0f + resistance);
+
+        // Only apply resistance to downward movement
+        LONG actualMovement = newJoyY - joyY;
+        if (actualMovement > 0) // Moving downward
+        {
+            LONG resistedMovement = (LONG)(actualMovement * resistanceMultiplier);
+            newJoyY = joyY + resistedMovement;
+        }
+    }
+
+    // ----- ACCELERATION RESISTANCE FACTOR -----
+    if (accelerationResistanceFactor > 0.0f && rm.lLastY < 0) // Only apply resistance when moving upward (+Y direction, acceleration)
+    {
+        // Calculate how far we are into the acceleration range (0.0 to 1.0)
+        // Center is where acceleration starts, axisMin is full acceleration
+        LONG centerY = (axisMin + axisMax) / 2;
+        float accelerationPosition = (float)(centerY - newJoyY) / (float)(centerY - axisMin);
+
+        // Clamp acceleration position between 0 and 1
+        accelerationPosition = max(0.0f, min(1.0f, accelerationPosition));
+
+        // Apply resistance: higher resistance as acceleration position increases
+        float resistance = accelerationResistanceFactor * accelerationPosition;
+        float resistanceMultiplier = 1.0f / (1.0f + resistance);
+
+        // Only apply resistance to upward movement
+        LONG actualMovement = joyY - newJoyY; // Positive when moving upward
+        if (actualMovement > 0) // Moving upward
+        {
+            LONG resistedMovement = (LONG)(actualMovement * resistanceMultiplier);
+            newJoyY = joyY - resistedMovement;
+        }
+    }
+
     // Clamp X to steering limit (hard lock)
     joyX = max(centerX - steeringMaxOffset, min(centerX + steeringMaxOffset, newJoyX));
 
@@ -1974,6 +2019,54 @@ void UpdateVJoyFromMouse(RAWMOUSE& rm, HANDLE hDevice)
     // Push to vJoy
     SetAxis(joyX, vjoyDeviceId, HID_USAGE_X);
     SetAxis(joyY, vjoyDeviceId, HID_USAGE_Y);
+}
+// Add these global variables at the top of your file
+static LONG targetJoyRx = (axisMin + axisMax) / 2;  // Start at center
+
+// New function to handle scroll input
+void HandleScrollInput(RAWMOUSE& rm)
+{
+    if (useScrollClutch && (rm.usButtonFlags & RI_MOUSE_WHEEL))
+    {
+        SHORT wheelDelta = (SHORT)rm.usButtonData; // +120 / -120
+
+        float scrollBoost = 2.0f;
+        float step = scrollClutchSens * ((float)(axisMax - axisMin) / 100.0f) * scrollBoost;
+
+        // Update target position
+        if (invertScrollClutchAxis)
+            targetJoyRx -= (LONG)((wheelDelta / 120.0f) * step);
+        else
+            targetJoyRx += (LONG)((wheelDelta / 120.0f) * step);
+
+        // ---- HALF-AXIS MODE ----
+        if (useHalfClutch)
+        {
+            LONG mid = (axisMin + axisMax) / 2;
+            targetJoyRx = max(mid, min(axisMax, targetJoyRx));
+        }
+
+        // Clamp target
+        targetJoyRx = max(axisMin, min(axisMax, targetJoyRx));
+    }
+}
+
+// New function to update smooth scroll (call from WM_TIMER)
+void UpdateSmoothScroll()
+{
+    if (joyRx != targetJoyRx)
+    {
+        // Smooth interpolation
+        joyRx = joyRx + (LONG)((targetJoyRx - joyRx) / smoothScrollSpeed);
+
+        // Snap to target when very close
+        if (abs(targetJoyRx - joyRx) < 5)
+            joyRx = targetJoyRx;
+
+        // Clamp final
+        joyRx = max(axisMin, min(axisMax, joyRx));
+        SetAxis(joyRx, vjoyDeviceId, HID_USAGE_RX);
+    }
 }
 bool noReverseLayout = false;
 // Layout types - use one of these
@@ -1993,7 +2086,8 @@ std::vector<GearLayout> hShifterLayouts = {
     {7, L"4-Gear R Top-Left Only"},
     {8, L"4-Gear R Bottom-Left Only"},
     {9, L"4-Gear Mixed (R Top-Left)"},
-    {10, L"6/8-Gear + High R Top-Right"}
+    {10, L"6/8-Gear + High R Top-Right"},
+    {11, L"PRNDL (Automatic Transmission)"}
 };
 int currentHShifterLayout = 1; // Default to Normal Layout
 int layoutType = 1; // Default to Normal Layout
@@ -2039,12 +2133,15 @@ void ComputeLayout(HWND hwnd)
     case 9: // 4-Gear Reverse Mixed Layout
         railCount = 3; // Always 3 rails for these layouts
         break;
+    case 11: // PRNDL Layout
+        railCount = 1; // Only one vertical rail for PRNDL
+        break;
     }
 
     // --- Compute center offset if No Reverse Layout to keep rails centered ---
 
     int centerOffset = 0;
-    if (layoutType == 2 || layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9) // Layouts with reduced rail count
+    if (layoutType == 2 || layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9 || layoutType == 11)
     {
         // Use appropriate full rail count based on layout type
         int fullRailCount;
@@ -2068,8 +2165,17 @@ void ComputeLayout(HWND hwnd)
         railX[i].y = centerY;
     }
 
-    topY = centerY - int(60 * layoutScale);
-    bottomY = centerY + int(60 * layoutScale);
+    // --- Adjust vertical range based on layout type ---
+    if (layoutType == 11) // PRNDL Layout - larger vertical range
+    {
+        topY = centerY - int(140 * layoutScale);    // Increased from 60 to 80
+        bottomY = centerY + int(140 * layoutScale); // Increased from 60 to 80
+    }
+    else // All other layouts
+    {
+        topY = centerY - int(60 * layoutScale);
+        bottomY = centerY + int(60 * layoutScale);
+    }
 
     knobMinX = railX[0].x;
     knobMaxX = railX[railCount - 1].x;
@@ -2423,6 +2529,30 @@ void ComputeLayout(HWND hwnd)
             highGearPositions["R"] = { railX[4].x, topY }; // Reverse at top on last rail
         }
     }
+    // --- Layout 11: PRNDL Layout ---
+    else if (layoutType == 11)
+    {
+        // PRNDL layout with single vertical rail
+        // Using numbers 1-5 instead of PRNDL labels
+        int railXPos = railX[0].x; // Only one rail
+
+        // Evenly distribute positions along the vertical rail
+        int totalPositions = 5;
+        int segmentHeight = (bottomY - topY) / (totalPositions - 1);
+
+        lowerGearPositions["1"] = { railXPos, topY };                    // P position
+        lowerGearPositions["2"] = { railXPos, topY + segmentHeight };    // R position  
+        lowerGearPositions["3"] = { railXPos, topY + segmentHeight * 2 };// N position
+        lowerGearPositions["4"] = { railXPos, topY + segmentHeight * 3 };// D position
+        lowerGearPositions["5"] = { railXPos, bottomY };                 // L position
+
+        // High range uses same positions (no separate high range for PRNDL)
+        highGearPositions["1"] = { railXPos, topY };
+        highGearPositions["2"] = { railXPos, topY + segmentHeight };
+        highGearPositions["3"] = { railXPos, topY + segmentHeight * 2 };
+        highGearPositions["4"] = { railXPos, topY + segmentHeight * 3 };
+        highGearPositions["5"] = { railXPos, bottomY };
+    }
     // Set default knob position
     knobPos.x = railX[railCount / 2].x; // Center rail
     knobPos.y = centerY;
@@ -2745,7 +2875,17 @@ void SaveConfig()
 
     // Invert Scroll → Clutch toggle
     WritePrivateProfileStringA(configSection, "InvertScrollClutch", invertScrollClutchAxis ? "1" : "0", configFile.c_str());
+    // Smooth Scroll Speed
+    sprintf_s(buf, "%.1f", smoothScrollSpeed);
+    WritePrivateProfileStringA(configSection, "SmoothScrollSpeed", buf, configFile.c_str());
 
+    // Brake Resistance Factor
+    sprintf_s(buf, "%.1f", brakeresistanceFactor);
+    WritePrivateProfileStringA(configSection, "BrakeResistanceFactor", buf, configFile.c_str());
+
+    // Acceleration Resistance Factor  
+    sprintf_s(buf, "%.1f", accelerationResistanceFactor);
+    WritePrivateProfileStringA(configSection, "AccelerationResistanceFactor", buf, configFile.c_str());
     // Show Clutch Indicator toggle
     WritePrivateProfileStringA(configSection, "ShowClutchIndicator", showClutchIndicator ? "1" : "0", configFile.c_str());
     sprintf_s(buf, "%.0f", maxSteeringDegrees);
@@ -2915,7 +3055,20 @@ void LoadConfig()
     GetPrivateProfileStringA(configSection, "ScrollClutchSens", "5.0", buf, sizeof(buf), configFile.c_str());
     scrollClutchSens = (float)atof(buf);
     scrollClutchSens = max(0.0f, min(10.0f, scrollClutchSens)); // clamp 0–10
+    // Smooth Scroll Speed (range 1.0-20.0)
+    GetPrivateProfileStringA(configSection, "SmoothScrollSpeed", "3.0", buf, sizeof(buf), configFile.c_str());
+    smoothScrollSpeed = (float)atof(buf);
+    smoothScrollSpeed = max(1.0f, min(20.0f, smoothScrollSpeed)); // clamp to valid range
 
+    // Brake Resistance Factor (range 0-50)
+    GetPrivateProfileStringA(configSection, "BrakeResistanceFactor", "15.0", buf, sizeof(buf), configFile.c_str());
+    brakeresistanceFactor = (float)atof(buf);
+    brakeresistanceFactor = max(0.0f, min(50.0f, brakeresistanceFactor)); // clamp to valid range
+
+    // Acceleration Resistance Factor (range 0-50)
+    GetPrivateProfileStringA(configSection, "AccelerationResistanceFactor", "5.0", buf, sizeof(buf), configFile.c_str());
+    accelerationResistanceFactor = (float)atof(buf);
+    accelerationResistanceFactor = max(0.0f, min(50.0f, accelerationResistanceFactor)); // clamp to valid range
     // Invert Scroll → Clutch toggle
     GetPrivateProfileStringA(configSection, "InvertScrollClutch", "0", buf, sizeof(buf), configFile.c_str());
     invertScrollClutchAxis = (strcmp(buf, "1") == 0);
@@ -3050,10 +3203,111 @@ void LoadConfig()
 }
 
 
+void RefreshProfilesList();
 
+void InitializeProfiles() {
+    std::string exeFolder = GetExeFolder();
+    std::string profilesDir = exeFolder + "\\profiles";
+    std::string oldConfig = exeFolder + "\\config.ini";
+    std::string defaultProfile = profilesDir + "\\Default Profile.ini";
 
+    // Create profiles directory if it doesn't exist
+    CreateDirectoryA(profilesDir.c_str(), NULL);
 
+    // Check if old config exists and move it
+    if (GetFileAttributesA(oldConfig.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        // Move old config to profiles folder
+        if (MoveFileA(oldConfig.c_str(), defaultProfile.c_str())) {
+            OutputDebugStringA("[PROFILES] Migrated config.ini to profiles/Default Profile.ini\n");
+        }
+    }
 
+    // Scan for existing profiles
+    RefreshProfilesList();
+
+    // Update configFile to point to current profile
+    if (!profileNames.empty()) {
+        configFile = profilesDir + "\\" + profileNames[currentProfileIndex];
+    }
+}
+
+void RefreshProfilesList() {
+    profileNames.clear();
+    std::string profilesDir = GetExeFolder() + "\\profiles";
+
+    WIN32_FIND_DATAA findFileData;
+    HANDLE hFind = FindFirstFileA((profilesDir + "\\*.ini").c_str(), &findFileData);
+
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            if (!(findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                profileNames.push_back(findFileData.cFileName);
+            }
+        } while (FindNextFileA(hFind, &findFileData));
+        FindClose(hFind);
+    }
+
+    // If no profiles found, create a default one
+    if (profileNames.empty()) {
+        std::string defaultProfile = profilesDir + "\\Default Profile.ini";
+        // Create empty file
+        HANDLE hFile = CreateFileA(defaultProfile.c_str(), GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile != INVALID_HANDLE_VALUE) {
+            CloseHandle(hFile);
+            profileNames.push_back("Default Profile.ini");
+        }
+    }
+}
+
+void CreateNewProfile(HWND hwnd) {
+    std::string profilesDir = GetExeFolder() + "\\profiles";
+    std::string newProfilePath = profilesDir + "\\" + newProfileName + ".ini";
+
+    // Create new profile file
+    HANDLE hFile = CreateFileA(newProfilePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile != INVALID_HANDLE_VALUE) {
+        CloseHandle(hFile);
+
+        // Refresh list and switch to new profile
+        RefreshProfilesList();
+
+        // Find the new profile index
+        for (size_t i = 0; i < profileNames.size(); ++i) {
+            if (profileNames[i] == newProfileName + ".ini") {
+                currentProfileIndex = i;
+                configFile = profilesDir + "\\" + profileNames[currentProfileIndex];
+
+                // Load default settings instead of saving current ones
+                LoadConfig(); // This will load default values since the file is empty
+
+                break;
+            }
+        }
+
+        creatingNewProfile = false;
+        newProfileName = "New Profile";
+
+        // Recompute layout after profile switch
+        ComputeLayout(hwnd);
+        ComputeIntersections();
+    }
+}
+
+void SwitchProfile(int index, HWND hwnd) {
+    if (index >= 0 && index < (int)profileNames.size()) {
+        // Save current profile before switching
+        SaveConfig();
+
+        currentProfileIndex = index;
+        std::string profilesDir = GetExeFolder() + "\\profiles";
+        configFile = profilesDir + "\\" + profileNames[currentProfileIndex];
+        LoadConfig();
+
+        // Recompute layout
+        ComputeLayout(hwnd);
+        ComputeIntersections();
+    }
+}
 // Forward declaration
 bool HasVisibleWindow(DWORD processId);
 bool IsGameProcess(DWORD processId, const std::wstring& exeName);
@@ -3744,6 +3998,7 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
     Pen dynamicRailPen(Color(r, g, b), 6);
     // Determine rail count for drawing based on layout type
 // Determine rail count for drawing based on layout type
+// Determine rail count for drawing based on layout type
     int drawRailCount = 0;
     switch (layoutType)
     {
@@ -3763,54 +4018,66 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
     case 9: // 4-Gear Reverse Mixed Layout
         drawRailCount = 3; // Always 3 rails for these layouts
         break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
-    // Horizontal neutral rail
-    graphics.DrawLine(&dynamicRailPen, railX[0].x, centerY, railX[drawRailCount - 1].x, centerY);
-
-    // Vertical rails
-    for (int i = 0; i < drawRailCount; ++i)
+    // Draw rails based on layout type
+    if (layoutType == 11)
     {
-        int yStart = topY;
-        int yEnd = bottomY;
+        // PRNDL layout: single vertical rail only, no horizontal rail
+        graphics.DrawLine(&dynamicRailPen, railX[0].x, topY, railX[0].x, bottomY);
+    }
+    else
+    {
+        // Standard H-pattern layouts
+        // Horizontal neutral rail
+        graphics.DrawLine(&dynamicRailPen, railX[0].x, centerY, railX[drawRailCount - 1].x, centerY);
 
-        bool hasTopGear = false;
-        bool hasBottomGear = false;
-
-        for (auto it = lowerGearPositions.begin(); it != lowerGearPositions.end(); ++it)
+        // Vertical rails
+        for (int i = 0; i < drawRailCount; ++i)
         {
-            POINT pos = it->second;
-            if (pos.x == railX[i].x && pos.y == topY)
-                hasTopGear = true;
-            if (pos.x == railX[i].x && pos.y == bottomY)
-                hasBottomGear = true;
+            int yStart = topY;
+            int yEnd = bottomY;
+
+            bool hasTopGear = false;
+            bool hasBottomGear = false;
+
+            for (auto it = lowerGearPositions.begin(); it != lowerGearPositions.end(); ++it)
+            {
+                POINT pos = it->second;
+                if (pos.x == railX[i].x && pos.y == topY)
+                    hasTopGear = true;
+                if (pos.x == railX[i].x && pos.y == bottomY)
+                    hasBottomGear = true;
+            }
+
+            for (auto it = highGearPositions.begin(); it != highGearPositions.end(); ++it)
+            {
+                POINT pos = it->second;
+                if (pos.x == railX[i].x && pos.y == topY)
+                    hasTopGear = true;
+                if (pos.x == railX[i].x && pos.y == bottomY)
+                    hasBottomGear = true;
+            }
+
+            if (!hasTopGear)
+                yStart = centerY;
+            if (!hasBottomGear)
+                yEnd = centerY;
+
+            if (yStart != yEnd)
+                graphics.DrawLine(&dynamicRailPen, railX[i].x, yStart, railX[i].x, yEnd);
         }
 
-        for (auto it = highGearPositions.begin(); it != highGearPositions.end(); ++it)
+        // Draw reverse rail only for layouts that have reverse at top
+        if (layoutType == 1) // Normal layout has reverse at top
         {
-            POINT pos = it->second;
-            if (pos.x == railX[i].x && pos.y == topY)
-                hasTopGear = true;
-            if (pos.x == railX[i].x && pos.y == bottomY)
-                hasBottomGear = true;
+            graphics.DrawLine(&dynamicRailPen, railX[0].x, topY, railX[0].x, centerY);
         }
-
-        if (!hasTopGear)
-            yStart = centerY;
-        if (!hasBottomGear)
-            yEnd = centerY;
-
-        if (yStart != yEnd)
-            graphics.DrawLine(&dynamicRailPen, railX[i].x, yStart, railX[i].x, yEnd);
     }
 
-    // Draw reverse rail only for layouts that have reverse at top
-// Draw reverse rail only for layouts that have reverse at top
-    if (layoutType == 1) // Normal layout has reverse at top
-    {
-        graphics.DrawLine(&dynamicRailPen, railX[0].x, topY, railX[0].x, centerY);
-    }
-    // For reverse bottom layouts, the vertical rail is already drawn in the loop above
     StringFormat format;
     format.SetAlignment(StringAlignmentCenter);     // Horizontal center
     format.SetLineAlignment(StringAlignmentCenter); // Vertical center
@@ -3885,7 +4152,7 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         // Determine if we should hide high gears for this specific layout
         bool hideHighGearsForLayout = hideHighGears;
         // Explicitly enable hideHighGears for layouts with less than 5 gears (where high gears don't exist)
-        if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9)
+        if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9 || layoutType == 11)
         {
             hideHighGearsForLayout = true; // Force hide high gears for these layouts
         }
@@ -4402,7 +4669,7 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
             }
 
             bool hideHighGearsForLayout = hideHighGears;
-            if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9)
+            if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9 || layoutType == 11)
             {
                 hideHighGearsForLayout = true;
             }
@@ -4435,7 +4702,7 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
             delete knobFont;
         }
-}
+    }
 
     //Acc and brake
     // Normalize Y axis
@@ -4596,10 +4863,10 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
     // --- Draw horizontal X-axis indicator (mouse steering) ---
         // --- Draw gear numbers on knob ---
-    
 
 
-    
+
+
 
     if (showKeybindPanel || showInputPanel || showTogglePanel)
     {
@@ -5189,7 +5456,7 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         hShifterLayoutButtonRect = { settingsPanelRect.left + 20, hShifterLayoutY, settingsPanelRect.right - 20, hShifterLayoutY + toggleHeight };
 
         PointF hShifterLayoutLabelPos((REAL)hShifterLayoutButtonRect.left, (REAL)(hShifterLayoutButtonRect.top - 25 + settingsScrollOffset));
-        graphics.DrawString(L"H-Shifter Layout", -1, &rowFont, hShifterLayoutLabelPos, &labelBrush);
+        graphics.DrawString(L"H-Shifter Layout:", -1, &rowFont, hShifterLayoutLabelPos, &labelBrush);
         tooltips[11].bounds = hShifterLayoutButtonRect;
         tooltips[11].text = L"Select the physical layout and number of gear positions for your H-shifter.";
         RectF hShifterLayoutBoxRect(
@@ -5216,7 +5483,7 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         gearLayoutButtonRect = { settingsPanelRect.left + 20, layoutButtonY, settingsPanelRect.right - 20, layoutButtonY + toggleHeight };
 
         PointF layoutLabelPos((REAL)gearLayoutButtonRect.left, (REAL)(gearLayoutButtonRect.top - 25 + settingsScrollOffset));
-        graphics.DrawString(L"Gear Label Layout", -1, &rowFont, layoutLabelPos, &labelBrush);
+        graphics.DrawString(L"Gear Label Layout:", -1, &rowFont, layoutLabelPos, &labelBrush);
         tooltips[12].bounds = gearLayoutButtonRect;
         tooltips[12].text = L"Select the visual theme and styling for gear number labels and text display.";
         RectF layoutBoxRect(
@@ -5234,20 +5501,187 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF arrowPos(layoutBoxRect.X + (layoutBoxRect.Width - 20), layoutBoxRect.Y + 4);
         graphics.DrawString(L"▼", -1, &rowFont, arrowPos, &valueBrush);
+        // --- Profile Selector ---
+        const int spacingAfterGearLayout = 50; // Updated spacing as requested
+        int profileSelectorY = layoutButtonY + toggleHeight + spacingAfterGearLayout;
+        profileButtonRect = { settingsPanelRect.left + 20, profileSelectorY, settingsPanelRect.right - 20, profileSelectorY + toggleHeight };
+
+        PointF profileLabelPos((REAL)profileButtonRect.left, (REAL)(profileButtonRect.top - 25 + settingsScrollOffset));
+        graphics.DrawString(L"Profile:", -1, &rowFont, profileLabelPos, &labelBrush);
+        tooltips[13].bounds = profileButtonRect;
+        tooltips[13].text = L"Select or create configuration profiles for different games or setups.";
+
+        RectF profileBoxRect(
+            (REAL)profileButtonRect.left,
+            (REAL)(profileButtonRect.top + settingsScrollOffset),
+            (REAL)(profileButtonRect.right - profileButtonRect.left),
+            (REAL)profileButtonRect.bottom - profileButtonRect.top
+        );
+        SolidBrush profileBoxBrush(Color(30, 30, 30));
+        graphics.FillRectangle(&profileBoxBrush, profileBoxRect);
+        Pen profileBoxPen(Color(0, 255, 136), 2);
+        graphics.DrawRectangle(&profileBoxPen, profileBoxRect);
+
+        // Display current profile name or new profile name being typed
+        std::string currentProfileDisplay;
+        if (creatingNewProfile) {
+            currentProfileDisplay = newProfileName; // Show typing in dropdown box
+        }
+        else if (!profileNames.empty()) {
+            currentProfileDisplay = profileNames[currentProfileIndex];
+            // Remove .ini extension for display
+            if (currentProfileDisplay.size() > 4 && currentProfileDisplay.substr(currentProfileDisplay.size() - 4) == ".ini") {
+                currentProfileDisplay = currentProfileDisplay.substr(0, currentProfileDisplay.size() - 4);
+            }
+        }
+        else {
+            currentProfileDisplay = "No Profiles";
+        }
+
+        std::wstring profileDisplayW(currentProfileDisplay.begin(), currentProfileDisplay.end());
+        PointF profileValuePos(profileBoxRect.X + 4, profileBoxRect.Y + 4);
+
+        if (creatingNewProfile) {
+            // Draw the text input field with selection in the DROPDOWN BOX
+            std::wstring profileNameW(newProfileName.begin(), newProfileName.end());
+
+            // Use StringFormat for consistent text rendering
+            StringFormat format;
+            format.SetAlignment(StringAlignmentNear);
+            format.SetLineAlignment(StringAlignmentNear);
+            format.SetFormatFlags(StringFormatFlagsNoClip | StringFormatFlagsNoWrap);
+
+            // Measure the entire string for height
+            RectF fullTextBounds;
+            graphics.MeasureString(profileNameW.c_str(), -1, &rowFont, PointF(0, 0), &format, &fullTextBounds);
+
+            // Draw selection background if text is selected
+            if (profileTextSelected && profileTextSelectionStart < profileTextSelectionEnd) {
+                // Measure text before selection using CharacterRanges for precise measurement
+                CharacterRange ranges[2];
+                ranges[0] = CharacterRange(0, profileTextSelectionStart);
+                ranges[1] = CharacterRange(profileTextSelectionStart, profileTextSelectionEnd - profileTextSelectionStart);
+
+                StringFormat measureFormat;
+                measureFormat.SetFormatFlags(StringFormatFlagsMeasureTrailingSpaces);
+                measureFormat.SetMeasurableCharacterRanges(2, ranges);
+
+                RectF measureRect(0, 0, 10000, 10000); // Large enough rectangle for measurement
+                Region regions[2];
+                graphics.MeasureCharacterRanges(profileNameW.c_str(), -1, &rowFont, measureRect, &measureFormat, 2, regions);
+
+                // Get bounds for selection region
+                RectF selectionBounds;
+                regions[1].GetBounds(&selectionBounds, &graphics);
+
+                // Draw selection highlight at precise position
+                RectF selectionRect(
+                    profileBoxRect.X + 4 + selectionBounds.X,
+                    profileBoxRect.Y + 4,
+                    selectionBounds.Width,
+                    fullTextBounds.Height
+                );
+                SolidBrush selectionBrush(Color(0, 120, 215));
+                graphics.FillRectangle(&selectionBrush, selectionRect);
+            }
+
+            // Draw the text in DROPDOWN BOX
+            SolidBrush textBrush(Color(255, 255, 255));
+            graphics.DrawString(profileNameW.c_str(), -1, &rowFont, profileValuePos, &format, &textBrush);
+
+            // Draw blinking cursor in DROPDOWN BOX if no selection
+            if (!profileTextSelected || profileTextSelectionStart == profileTextSelectionEnd) {
+                static DWORD lastBlink = GetTickCount();
+                static bool cursorVisible = true;
+
+                DWORD currentTime = GetTickCount();
+                if (currentTime - lastBlink > 500) {
+                    cursorVisible = !cursorVisible;
+                    lastBlink = currentTime;
+                }
+
+                if (cursorVisible) {
+                    // Calculate cursor position using precise CharacterRanges measurement
+                    if (profileTextSelectionStart >= 0) {
+                        CharacterRange range(0, profileTextSelectionStart);
+                        StringFormat cursorFormat;
+                        cursorFormat.SetFormatFlags(StringFormatFlagsMeasureTrailingSpaces);
+                        cursorFormat.SetMeasurableCharacterRanges(1, &range);
+
+                        RectF measureRect(0, 0, 10000, 10000);
+                        Region regions[1];
+                        graphics.MeasureCharacterRanges(profileNameW.c_str(), -1, &rowFont, measureRect, &cursorFormat, 1, regions);
+
+                        RectF bounds;
+                        if (regions[0].GetBounds(&bounds, &graphics) == Ok) {
+                            REAL cursorX = profileBoxRect.X + 4 + bounds.GetRight();
+                            REAL cursorY = profileBoxRect.Y + 4;
+                            REAL cursorHeight = fullTextBounds.Height > 0 ? fullTextBounds.Height : rowFont.GetHeight(&graphics);
+
+                            RectF cursorRect(cursorX, cursorY, 2, cursorHeight);
+                            SolidBrush cursorBrush(Color(255, 255, 255));
+                            graphics.FillRectangle(&cursorBrush, cursorRect);
+                        }
+                    }
+                    else {
+                        // Fallback for cursor at start (no text)
+                        REAL cursorHeight = fullTextBounds.Height > 0 ? fullTextBounds.Height : rowFont.GetHeight(&graphics);
+                        RectF cursorRect(profileBoxRect.X + 4, profileBoxRect.Y + 4, 2, cursorHeight);
+                        SolidBrush cursorBrush(Color(255, 255, 255));
+                        graphics.FillRectangle(&cursorBrush, cursorRect);
+                    }
+                }
+            }
+        }
+        else {
+            // Normal profile display in dropdown box
+            graphics.DrawString(profileDisplayW.c_str(), -1, &rowFont, profileValuePos, &valueBrush);
+        }
+
+        PointF profileArrowPos(profileBoxRect.X + (profileBoxRect.Width - 20), profileBoxRect.Y + 4);
+        graphics.DrawString(L"▼", -1, &rowFont, profileArrowPos, &valueBrush);
+
+
+
+        // --- Create New Profile Button (separate button below dropdown) ---
+        int createProfileButtonY = profileSelectorY + toggleHeight + 10; // 10px spacing after profile selector
+        createProfileButtonRect = { settingsPanelRect.left + 20, createProfileButtonY, settingsPanelRect.right - 20, createProfileButtonY + toggleHeight };
+
+        RectF createProfileBoxRect(
+            (REAL)createProfileButtonRect.left,
+            (REAL)(createProfileButtonRect.top + settingsScrollOffset),
+            (REAL)(createProfileButtonRect.right - createProfileButtonRect.left),
+            (REAL)createProfileButtonRect.bottom - createProfileButtonRect.top
+        );
+
+        // Different color for create button to make it stand out
+        SolidBrush createProfileBoxBrush(Color(60, 60, 60));
+        graphics.FillRectangle(&createProfileBoxBrush, createProfileBoxRect);
+        Pen createProfileBoxPen(Color(0, 255, 136), 2);
+        graphics.DrawRectangle(&createProfileBoxPen, createProfileBoxRect);
+
+        // ALWAYS show instruction text in create button, never show the typing
+        std::wstring createButtonText = creatingNewProfile ? L"Type profile name and press Enter" : L"Create New Profile";
+
+        PointF createButtonTextPos(createProfileBoxRect.X + 4, createProfileBoxRect.Y + 4);
+        graphics.DrawString(createButtonText.c_str(), -1, &rowFont, createButtonTextPos, &valueBrush);
+
+        // Update the deviceComboY position to be after profile selector
 
         // --- Mouse Device Selector ---
 // --- Mouse Device Selector ---
         SolidBrush deviceBoxBrush(Color(30, 30, 30));
         Pen deviceBoxPen(Color(0, 255, 136), 2);
 
-        const int spacingAfterGearLayout = 50;
-        int deviceComboY = layoutButtonY + toggleHeight + spacingAfterGearLayout;
+        // Update the deviceComboY position to be after create profile button
+        const int spacingAfterProfile = 50;
+        int deviceComboY = createProfileButtonY + toggleHeight + spacingAfterProfile;
         deviceComboRect = { settingsPanelRect.left + 20, deviceComboY, settingsPanelRect.right - 20, deviceComboY + comboHeight };
 
         PointF deviceLabelPos((REAL)deviceComboRect.left, (REAL)(deviceComboRect.top - nameControlSpacing + settingsScrollOffset));
         graphics.DrawString(L"H-Shifter Mouse Device:", -1, &rowFont, deviceLabelPos, &labelBrush);
-        tooltips[13].bounds = deviceComboRect;
-        tooltips[13].text = L"Select which mouse device controls the H-shifter knob movement.";
+        tooltips[14].bounds = deviceComboRect;
+        tooltips[14].text = L"Select which mouse device controls the H-shifter knob movement.";
         RectF deviceBoxRect((REAL)deviceComboRect.left, (REAL)(deviceComboRect.top + settingsScrollOffset),
             (REAL)(deviceComboRect.right - deviceComboRect.left), (REAL)(deviceComboRect.bottom - deviceComboRect.top));
         graphics.FillRectangle(&deviceBoxBrush, deviceBoxRect);
@@ -5271,8 +5705,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF dynTransLabelPos((REAL)dynamicTransparencyToggleRect.left, (REAL)dynamicTransparencyToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Smart Adaptive Transparency", -1, &rowFont, dynTransLabelPos, &labelBrush);
-        tooltips[14].bounds = dynamicTransparencyToggleRect;
-        tooltips[14].text = L"Automatically adjusts transparency based on background brightness when in overlay mode.";
+        tooltips[15].bounds = dynamicTransparencyToggleRect;
+        tooltips[15].text = L"Automatically adjusts transparency based on background brightness when in overlay mode.";
         RectF dynTransCheckboxRect(dynamicTransparencyToggleRect.left + 220, dynamicTransparencyToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush dynTransBoxBrush(dynamicTransparencyEnabled ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&dynTransBoxBrush, dynTransCheckboxRect);
@@ -5285,8 +5719,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         int alphaPercent = int(tAlpha * 100.0f);
         sprintf_s(valueBuffer, "%d%%", alphaPercent);
         DrawSlider(transparencySliderRect, tAlpha, "Transparency", valueBuffer);
-        tooltips[15].bounds = transparencySliderRect;
-        tooltips[15].text = L"Sets the transparency level when the overlay is active.";
+        tooltips[16].bounds = transparencySliderRect;
+        tooltips[16].text = L"Sets the transparency level when the overlay is active.";
 
         // Idle Transparency Slider
         int idleSliderY = transparencySliderRect.bottom + 55;
@@ -5295,8 +5729,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         int idlePercent = int(tIdle * 100.0f);
         sprintf_s(valueBuffer, "%d%%", idlePercent);
         DrawSlider(minTransparencySliderRect, tIdle, "Idle Transparency", valueBuffer);
-        tooltips[16].bounds = minTransparencySliderRect;
-        tooltips[16].text = L"Sets the minimum transparency when idle (requires Smart Adaptive Transparency to be enabled).";
+        tooltips[17].bounds = minTransparencySliderRect;
+        tooltips[17].text = L"Sets the minimum transparency when idle (requires Smart Adaptive Transparency to be enabled).";
         // Fade Delay Slider
 // Fade Delay Slider
         int delaySliderY = minTransparencySliderRect.bottom + 55;
@@ -5306,8 +5740,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         char delayValueBuffer[32];
         sprintf_s(delayValueBuffer, "%lu ms", transparencyFadeDelay);
         DrawSlider(transparencyFadeDelaySliderRect, tDelay, "Fade Delay", delayValueBuffer);
-        tooltips[17].bounds = transparencyFadeDelaySliderRect;
-        tooltips[17].text = L"Sets the delay before transparency fades to idle level after stopping H-shifter use.";
+        tooltips[18].bounds = transparencyFadeDelaySliderRect;
+        tooltips[18].text = L"Sets the delay before transparency fades to idle level after stopping H-shifter use.";
         // --- Performance Optimization Toggle ---
         int optimizationY = transparencyFadeDelaySliderRect.bottom + 40;
         optimizationToggleRect = { settingsPanelRect.left + 20, optimizationY, settingsPanelRect.right - 20, optimizationY + toggleHeight };
@@ -5315,9 +5749,9 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         PointF optimizationLabelPos((REAL)optimizationToggleRect.left, (REAL)optimizationToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Performance Mode", -1, &rowFont, optimizationLabelPos, &labelBrush);
         Font descFont(&fontFamily, 11, FontStyleRegular, UnitPixel); // Slightly bigger font
-        tooltips[18].bounds = optimizationToggleRect;
-        tooltips[18].text = L"Optimizes for maximum game performance. Highly Recommended.";
-      
+        tooltips[19].bounds = optimizationToggleRect;
+        tooltips[19].text = L"Optimizes for maximum game performance. Highly Recommended.";
+
         RectF optimizationCheckboxRect(optimizationToggleRect.left + 220, optimizationToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush optimizationBoxBrush(!disableSmartRedraws ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&optimizationBoxBrush, optimizationCheckboxRect);
@@ -5501,13 +5935,13 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         mouseSteeringToggleRect = { settingsPanelRect.left + 20, mouseSteeringY, settingsPanelRect.right - 20, mouseSteeringY + toggleHeight * 2 };
         PointF mouseLabel1((REAL)mouseSteeringToggleRect.left, (REAL)mouseSteeringToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Mouse Steering", -1, &rowFont, mouseLabel1, &labelBrush);
-        tooltips[19].bounds = {
+        tooltips[20].bounds = {
             mouseSteeringToggleRect.left,
             mouseSteeringToggleRect.top,
             mouseSteeringToggleRect.right,
             mouseSteeringToggleRect.top + toggleHeight  // Only first line height
         };
-        tooltips[19].text = L"Enables mouse steering for games. DO NOT USE in game's default mouse steering, always use this. Also works on games that don't have mouse steering support.";
+        tooltips[20].text = L"Enables mouse steering for games. DO NOT USE in game's default mouse steering, always use this. Also works on games that don't have mouse steering support.";
         RectF mouseCheckboxRect(mouseLabel1.X + 140, mouseLabel1.Y, 20.0f, 20.0f);
         SolidBrush mouseBoxBrush(mouseSteeringEnabled ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&mouseBoxBrush, mouseCheckboxRect);
@@ -5526,8 +5960,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         sprintf_s(steeringBuffer, "%.2f", steeringSensitivity);
         float steeringNorm = (steeringSensitivity - 0.1f) / (5.0f - 0.1f);
         DrawSlider(steeringSensSliderRect, steeringNorm, "Steering Sensitivity", steeringBuffer);
-        tooltips[20].bounds = steeringSensSliderRect;
-        tooltips[20].text = L"Adjusts the sensitivity of mouse steering input.";
+        tooltips[21].bounds = steeringSensSliderRect;
+        tooltips[21].text = L"Adjusts the sensitivity of mouse steering input.";
         // --- Max Steering Degrees Slider ---
         int steeringDegreesY = steeringSensSliderRect.bottom + 65; // gap below steering sensitivity
         steeringDegreesSliderRect = {
@@ -5547,8 +5981,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         float steeringDegreesNorm = (maxSteeringDegrees - 90.0f) / (900.0f - 90.0f);
 
         DrawSlider(steeringDegreesSliderRect, steeringDegreesNorm, "Max Steering Degrees", steeringDegreesBuffer);
-        tooltips[21].bounds = steeringDegreesSliderRect;
-        tooltips[21].text = L"Limits the maximum steering rotation to prevent over-rotation. Higher values allow more steering range.";
+        tooltips[22].bounds = steeringDegreesSliderRect;
+        tooltips[22].text = L"Limits the maximum steering rotation to prevent over-rotation. Higher values allow more steering range.";
         // --- Acc/Brake Sensitivity Slider ---
 // --- Acc/Brake Sensitivity Slider ---
         int accBrakeSensY = steeringDegreesSliderRect.bottom + 65; // gap below max steering degrees
@@ -5560,10 +5994,10 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         };
         char accBrakeBuffer[8];
         sprintf_s(accBrakeBuffer, "%.2f", accBrakeSensitivity);
-        float accBrakeNorm = (accBrakeSensitivity - 0.1f) / (5.0f - 0.1f);
+        float accBrakeNorm = (accBrakeSensitivity - 0.1f) / 19.9f; // normalize 0.1-20.0 range
         DrawSlider(accBrakeSensSliderRect, accBrakeNorm, "Acc/Brake Sensitivity", accBrakeBuffer);
-        tooltips[22].bounds = accBrakeSensSliderRect;
-        tooltips[22].text = L"Adjusts the sensitivity of throttle and brake input from vertical mouse movement.";
+        tooltips[23].bounds = accBrakeSensSliderRect;
+        tooltips[23].text = L"Adjusts the sensitivity of throttle and brake input from vertical mouse movement.";
 
         // --- Throttle/Brake Indicator ---
         int showYBarY = accBrakeSensSliderRect.bottom + 30;
@@ -5571,22 +6005,52 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF showYBarLabelPos((REAL)showYBarToggleRect.left, (REAL)showYBarToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Throttle/Brake Indicator", -1, &rowFont, showYBarLabelPos, &labelBrush);
-        tooltips[23].bounds = showYBarToggleRect;
-        tooltips[23].text = L"Shows a vertical bar next to the H-shifter displaying throttle and brake input levels.";
+        tooltips[24].bounds = showYBarToggleRect;
+        tooltips[24].text = L"Shows a vertical bar next to the H-shifter displaying throttle and brake input levels.";
 
         RectF showYBarCheckboxRect(showYBarToggleRect.left + 190, showYBarToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush showYBarBoxBrush(showYBar ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&showYBarBoxBrush, showYBarCheckboxRect);
         graphics.DrawRectangle(&boxPen, showYBarCheckboxRect);
+        // --- Brake Resistance Factor Slider ---
+        int brakeResistanceY = showYBarY + sliderHeight + 55;
+        brakeresistanceSlider = {
+            settingsPanelRect.left + 20,
+            brakeResistanceY,
+            settingsPanelRect.right - 20,
+            brakeResistanceY + sliderHeight
+        };
 
+        char brakeResistanceBuffer[8];
+        sprintf_s(brakeResistanceBuffer, "%.1f", brakeresistanceFactor);
+        float brakeResistanceNorm = brakeresistanceFactor / 50.0f; // normalize 0-50 range
+        DrawSlider(brakeresistanceSlider, brakeResistanceNorm, "Brake Resistance", brakeResistanceBuffer);
+        tooltips[25].bounds = brakeresistanceSlider;
+        tooltips[25].text = L"Adjusts resistance when pressing brakes (higher = more resistance at full brake).";
+
+        // --- Acceleration Resistance Factor Slider ---
+        int accelerationResistanceY = brakeResistanceY + sliderHeight + 55;
+        accelerationresistanceSlider = {
+            settingsPanelRect.left + 20,
+            accelerationResistanceY,
+            settingsPanelRect.right - 20,
+            accelerationResistanceY + sliderHeight
+        };
+
+        char accelerationResistanceBuffer[8];
+        sprintf_s(accelerationResistanceBuffer, "%.1f", accelerationResistanceFactor);
+        float accelerationResistanceNorm = accelerationResistanceFactor / 50.0f; // normalize 0-50 range
+        DrawSlider(accelerationresistanceSlider, accelerationResistanceNorm, "Throttle Resistance", accelerationResistanceBuffer);
+        tooltips[26].bounds = accelerationresistanceSlider;
+        tooltips[26].text = L"Adjusts resistance when pressing throttle (higher = more resistance at full throttle).";
         // --- Y-bar Fixed Transparency Toggle ---
-        int yBarTransparencyY = showYBarToggleRect.bottom + 30;
+        int yBarTransparencyY = accelerationresistanceSlider.bottom + 30;
         yBarFixedTransToggle = { settingsPanelRect.left + 20, yBarTransparencyY, settingsPanelRect.right - 20, yBarTransparencyY + toggleHeight };
 
         PointF yBarTransLabelPos((REAL)yBarFixedTransToggle.left, (REAL)yBarFixedTransToggle.top + settingsScrollOffset);
         graphics.DrawString(L"T/B Better Visibility", -1, &rowFont, yBarTransLabelPos, &labelBrush);
-        tooltips[24].bounds = yBarFixedTransToggle;
-        tooltips[24].text = L"Enhances throttle/brake indicator with dynamic colors and separate transparency control for better visibility in all conditions.";
+        tooltips[27].bounds = yBarFixedTransToggle;
+        tooltips[27].text = L"Enhances throttle/brake indicator with dynamic colors and separate transparency control for better visibility in all conditions.";
         RectF yBarTransCheckboxRect(yBarFixedTransToggle.left + 190, yBarFixedTransToggle.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush yBarTransBoxBrush(useYbarFixedTransparency ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&yBarTransBoxBrush, yBarTransCheckboxRect);
@@ -5600,8 +6064,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         char yBarAlphaBuffer[8];
         sprintf_s(yBarAlphaBuffer, "%d%%", (int)((yBarAlpha / 255.0f) * 100.0f)); // Convert to percentage
         DrawSlider(yBarAlphaSlider, (float)yBarAlpha / 255.0f, "T/B Transparency Level", yBarAlphaBuffer); // Changed label too
-        tooltips[25].bounds = yBarAlphaSlider;
-        tooltips[25].text = L"Sets the transparency level for the throttle/brake indicator when fixed transparency is enabled (0% = fully transparent, 100% = fully opaque).";
+        tooltips[28].bounds = yBarAlphaSlider;
+        tooltips[28].text = L"Sets the transparency level for the throttle/brake indicator when fixed transparency is enabled (0% = fully transparent, 100% = fully opaque).";
 
         // --- Axis Interdependent Smoothing ---
         int axisSmoothingY = yBarAlphaSlider.bottom + 35;  // Changed from showYBarToggleRect.bottom + 30
@@ -5609,8 +6073,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF axisSmoothingLabelPos((REAL)useAxisSmoothingToggle.left, (REAL)useAxisSmoothingToggle.top + settingsScrollOffset);
         graphics.DrawString(L"Steering T/B Smoothing", -1, &rowFont, axisSmoothingLabelPos, &labelBrush);
-        tooltips[26].bounds = useAxisSmoothingToggle;
-        tooltips[26].text = L"When enabled, reduces steering sensitivity during heavy acceleration/braking and vice versa for more stable control.";
+        tooltips[29].bounds = useAxisSmoothingToggle;
+        tooltips[29].text = L"When enabled, reduces steering sensitivity during heavy acceleration/braking and vice versa for more stable control.";
 
         RectF axisSmoothingCheckboxRect(useAxisSmoothingToggle.left + 190, useAxisSmoothingToggle.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush axisSmoothingBoxBrush(useAxisSmoothing ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5624,8 +6088,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         char axisSmoothingBuffer[8];
         sprintf_s(axisSmoothingBuffer, "%.2f", axisSmoothingFactor);
         DrawSlider(axisSmoothingFactorSlider, axisSmoothingFactor, "Smoothing Strength", axisSmoothingBuffer);
-        tooltips[27].bounds = axisSmoothingFactorSlider;
-        tooltips[27].text = L"Controls how much one axis's sensitivity is reduced when the other axis is active. Higher values = more stability.";
+        tooltips[30].bounds = axisSmoothingFactorSlider;
+        tooltips[30].text = L"Controls how much one axis's sensitivity is reduced when the other axis is active. Higher values = more stability.";
 
         // --- Mouse Steering Indicator ---
         int showXBarY = axisSmoothingFactorSlider.bottom + 35;
@@ -5633,8 +6097,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF showXBarLabelPos((REAL)showXBarToggleRect.left, (REAL)showXBarToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Mouse Steering Indicator", -1, &rowFont, showXBarLabelPos, &labelBrush);
-        tooltips[28].bounds = showXBarToggleRect;
-        tooltips[28].text = L"Shows a horizontal bar below the H-shifter displaying steering input position.";
+        tooltips[31].bounds = showXBarToggleRect;
+        tooltips[31].text = L"Shows a horizontal bar below the H-shifter displaying steering input position.";
 
         RectF showXBarCheckboxRect(showXBarToggleRect.left + 190, showXBarToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush showXBarBoxBrush(showXBar ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5647,8 +6111,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF throttleBrakeLabelPos((REAL)useThrottleBrakeToggleRect.left, (REAL)useThrottleBrakeToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Use Throttle/Brake (W/S)", -1, &rowFont, throttleBrakeLabelPos, &labelBrush);
-        tooltips[29].bounds = useThrottleBrakeToggleRect;  // Update tooltip index as needed
-        tooltips[29].text = L"Enables using W/S keys for throttle and brake control on vJoy Z/RZ axes.";
+        tooltips[32].bounds = useThrottleBrakeToggleRect;  // Update tooltip index as needed
+        tooltips[32].text = L"Enables using W/S keys for throttle and brake control on vJoy Z/RZ axes.";
 
         RectF throttleBrakeCheckboxRect(throttleBrakeLabelPos.X + 190, throttleBrakeLabelPos.Y, 20.0f, 20.0f);
         SolidBrush throttleBrakeBoxBrush(useThrottleBrakeAxes ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5661,8 +6125,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF scrollLabelPos((REAL)useScrollClutchToggleRect.left, (REAL)useScrollClutchToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Use Scroll to Clutch", -1, &rowFont, scrollLabelPos, &labelBrush);
-        tooltips[30].bounds = useScrollClutchToggleRect;
-        tooltips[30].text = L"Enables using mouse scroll wheel to control clutch input.";
+        tooltips[33].bounds = useScrollClutchToggleRect;
+        tooltips[33].text = L"Enables using mouse scroll wheel to control clutch input.";
 
         RectF scrollCheckboxRect(scrollLabelPos.X + 190, scrollLabelPos.Y, 20.0f, 20.0f);
         SolidBrush scrollBoxBrush(useScrollClutch ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5674,8 +6138,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF halfScrollLabelPos((REAL)halfScrollClutchToggleRect.left, (REAL)halfScrollClutchToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Half Scroll Clutch", -1, &rowFont, halfScrollLabelPos, &labelBrush);
-        tooltips[31].bounds = halfScrollClutchToggleRect;
-        tooltips[31].text = L"Uses only half the scroll range for full clutch control (0-100% clutch in half the axis range).";
+        tooltips[34].bounds = halfScrollClutchToggleRect;
+        tooltips[34].text = L"Uses only half the scroll range for full clutch control (0-100% clutch in half the axis range).";
         RectF halfScrollCheckboxRect(halfScrollLabelPos.X + 190, halfScrollLabelPos.Y, 20.0f, 20.0f);
         SolidBrush halfScrollBoxBrush(useHalfClutch ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&halfScrollBoxBrush, halfScrollCheckboxRect);
@@ -5687,8 +6151,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF showClutchLabelPos((REAL)showClutchToggleRect.left, (REAL)showClutchToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Clutch Indicator", -1, &rowFont, showClutchLabelPos, &labelBrush);
-        tooltips[32].bounds = showClutchToggleRect;
-        tooltips[32].text = L"Shows clutch level indicator bar and changes H-shifter color when clutch is applied.";
+        tooltips[35].bounds = showClutchToggleRect;
+        tooltips[35].text = L"Shows clutch level indicator bar and changes H-shifter color when clutch is applied.";
         RectF showClutchCheckboxRect(showClutchLabelPos.X + 190, showClutchLabelPos.Y, 20.0f, 20.0f);
         SolidBrush showClutchBoxBrush(showClutchIndicator ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&showClutchBoxBrush, showClutchCheckboxRect);
@@ -5696,7 +6160,7 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
 
         // --- Scroll Sensitivity Slider ---
-        int scrollSensY = showClutchY + toggleHeight + 40; // 20px gap after showClutch toggle
+        int scrollSensY = showClutchY + toggleHeight + 45; // 20px gap after showClutch toggle
         scrollSensSliderRect = {
             settingsPanelRect.left + 20,
             scrollSensY,
@@ -5708,16 +6172,33 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         sprintf_s(scrollSensBuffer, "%.2f", scrollClutchSens);
         float scrollSensNorm = scrollClutchSens / 10.0f; // normalize 0–10 range
         DrawSlider(scrollSensSliderRect, scrollSensNorm, "Scroll Sensitivity", scrollSensBuffer);
-        tooltips[33].bounds = scrollSensSliderRect;
-        tooltips[33].text = L"Adjusts how sensitive the scroll wheel is for clutch control.";
+        tooltips[36].bounds = scrollSensSliderRect;
+        tooltips[36].text = L"Adjusts how sensitive the scroll wheel is for clutch control.";
+
+        // --- Smooth Scroll Speed Slider ---
+        int smoothScrollY = scrollSensY + toggleHeight + 45;
+        smoothScrollSlider = {
+            settingsPanelRect.left + 20,
+            smoothScrollY,
+            settingsPanelRect.right - 20,
+            smoothScrollY + sliderHeight
+        };
+
+        char smoothScrollBuffer[8];
+        sprintf_s(smoothScrollBuffer, "%.1f", smoothScrollSpeed);
+        float smoothScrollNorm = (smoothScrollSpeed - 1.0f) / 19.0f; // normalize 1.0-20.0 range
+        DrawSlider(smoothScrollSlider, smoothScrollNorm, "Scroll Smoothness", smoothScrollBuffer);
+        tooltips[37].bounds = smoothScrollSlider;
+        tooltips[37].text = L"Adjusts how smoothly the scroll clutch moves (higher = faster response, lower = smoother movement).";
+
         // --- Invert Scroll → Clutch Toggle ---
-        int invertScrollY = scrollSensY + sliderHeight + 30; // 20px gap after scroll sensitivity slider
+        int invertScrollY = smoothScrollY + sliderHeight + 30; // 20px gap after scroll sensitivity slider
         invertScrollToggleRect = { settingsPanelRect.left + 20, invertScrollY, settingsPanelRect.right - 20, invertScrollY + toggleHeight };
 
         PointF invertScrollLabelPos((REAL)invertScrollToggleRect.left, (REAL)invertScrollToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Invert Scroll to Clutch", -1, &rowFont, invertScrollLabelPos, &labelBrush);
-        tooltips[34].bounds = invertScrollToggleRect;
-        tooltips[34].text = L"Reverses the scroll direction for clutch control (scroll up/down reversed).";
+        tooltips[38].bounds = invertScrollToggleRect;
+        tooltips[38].text = L"Reverses the scroll direction for clutch control (scroll up/down reversed).";
         RectF invertScrollCheckboxRect(invertScrollLabelPos.X + 190, invertScrollLabelPos.Y, 20.0f, 20.0f);
         SolidBrush invertScrollBoxBrush(invertScrollClutchAxis ? Color(0, 255, 136) : Color(30, 30, 30));
         graphics.FillRectangle(&invertScrollBoxBrush, invertScrollCheckboxRect);
@@ -5734,8 +6215,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF steeringLabelPos((REAL)steeringDeviceComboRect.left, (REAL)(steeringDeviceComboRect.top - nameControlSpacing + settingsScrollOffset));
         graphics.DrawString(L"Steering Mouse Device:", -1, &rowFont, steeringLabelPos, &labelBrush);
-        tooltips[35].bounds = steeringDeviceComboRect;
-        tooltips[35].text = L"Select which mouse device controls steering (can be different from H-shifter mouse).";
+        tooltips[39].bounds = steeringDeviceComboRect;
+        tooltips[39].text = L"Select which mouse device controls steering (can be different from H-shifter mouse).";
 
         RectF steeringBoxRect((REAL)steeringDeviceComboRect.left, (REAL)(steeringDeviceComboRect.top + settingsScrollOffset),
             (REAL)(steeringDeviceComboRect.right - steeringDeviceComboRect.left), (REAL)(steeringDeviceComboRect.bottom - steeringDeviceComboRect.top));
@@ -5784,8 +6265,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         PointF useXInputLabelPos((REAL)useXInputToggleRect.left, (REAL)useXInputToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Enable Controller", -1, &rowFont, useXInputLabelPos, &labelBrush);
         // Enable Controller
-        tooltips[36].bounds = useXInputToggleRect;
-        tooltips[36].text = L"Uses controller instead of mouse for H-shifter input.";
+        tooltips[40].bounds = useXInputToggleRect;
+        tooltips[40].text = L"Uses controller instead of mouse for H-shifter input.";
         // Draw checkbox closer to label
         RectF useXInputCheckboxRect(useXInputToggleRect.left + 180, useXInputToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush useXInputBoxBrush(useXInput ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5800,8 +6281,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         PointF gamepadLabelPos((REAL)gamepadComboRect.left, (REAL)(gamepadComboRect.top + settingsScrollOffset - nameControlSpacing));
         graphics.DrawString(L"Select Controller:", -1, &rowFont, gamepadLabelPos, &labelBrush);
         // Gamepad Device Selector
-        tooltips[37].bounds = gamepadComboRect;
-        tooltips[37].text = L"Select which gamepad/controller to use for H-shifter input.";
+        tooltips[41].bounds = gamepadComboRect;
+        tooltips[41].text = L"Select which gamepad/controller to use for H-shifter input.";
 
 
         // Draw selector box
@@ -5835,8 +6316,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         sprintf_s(sensValueBuffer, "%.2f", controllerSensMultiplier);
         DrawSlider(controllerSensSliderRect, controllerSensSliderValue, "Controller Sensitivity", sensValueBuffer);
         // Controller Sensitivity
-        tooltips[38].bounds = controllerSensSliderRect;
-        tooltips[38].text = L"Adjusts the sensitivity of controller stick inputs for H-shifter.";
+        tooltips[42].bounds = controllerSensSliderRect;
+        tooltips[42].text = L"Adjusts the sensitivity of controller stick inputs for H-shifter.";
 
         // --- Use Right Stick for Knob Toggle ---
         // (your existing code continues here)
@@ -5847,8 +6328,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 
         PointF rightStickLabelPos((REAL)useRightStickToggleRect.left, (REAL)useRightStickToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Use Right Stick for Knob", -1, &rowFont, rightStickLabelPos, &labelBrush);
-        tooltips[39].bounds = useRightStickToggleRect;
-        tooltips[39].text = L"Uses right stick instead of left stick for H-shifter knob movement.";
+        tooltips[43].bounds = useRightStickToggleRect;
+        tooltips[43].text = L"Uses right stick instead of left stick for H-shifter knob movement.";
         // Checkbox
         RectF rightStickCheckboxRect(useRightStickToggleRect.left + 180, useRightStickToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush rightStickBoxBrush(useRightStick ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5860,8 +6341,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         PointF disableKnobLabelPos((REAL)disableRealKnobMovementToggleRect.left, (REAL)disableRealKnobMovementToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Use Right Stick to look", -1, &rowFont, disableKnobLabelPos, &labelBrush);
         // Use Right Stick to look
-        tooltips[40].bounds = disableRealKnobMovementToggleRect;
-        tooltips[40].text = L"Uses right stick for camera look instead of H-shifter movement. Holding assist button enables knob assist and disables camera look.";
+        tooltips[44].bounds = disableRealKnobMovementToggleRect;
+        tooltips[44].text = L"Uses right stick for camera look instead of H-shifter movement. Holding assist button enables knob assist and disables camera look.";
         // Checkbox closer to label
         RectF disableKnobCheckboxRect(disableRealKnobMovementToggleRect.left + 180, disableRealKnobMovementToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush disableKnobBoxBrush(disableRealKnobMovement ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5874,8 +6355,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         PointF bindingModeLabelPos((REAL)bindingModeForAxisToggle.left, (REAL)bindingModeForAxisToggle.top + settingsScrollOffset);
         graphics.DrawString(L"Binding Mode", -1, &rowFont, bindingModeLabelPos, &labelBrush);
         // Binding Mode for R-Axis
-        tooltips[41].bounds = bindingModeForAxisToggle; // Add new tooltip index
-        tooltips[41].text = L"When enabled, right stick and clutch will output full values with minimal input for easier controller binding. DISABLE IT WHEN IT'S NOT NEEDED.";
+        tooltips[45].bounds = bindingModeForAxisToggle; // Add new tooltip index
+        tooltips[45].text = L"When enabled, right stick and clutch will output full values with minimal input for easier controller binding. DISABLE IT WHEN IT'S NOT NEEDED.";
         // Checkbox
         RectF bindingModeCheckboxRect(bindingModeForAxisToggle.left + 180, bindingModeForAxisToggle.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush bindingModeBoxBrush(bindingModeForRAxis ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5889,8 +6370,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         // Main label
         graphics.DrawString(L"Hold Assist to Look", -1, &rowFont, invertAssistLabelPos, &labelBrush);
         // Hold Assist to Look
-        tooltips[42].bounds = invertAssistToggleRect;
-        tooltips[42].text = L"Holding assist button enables right stick for camera look (disables assist knob).";
+        tooltips[46].bounds = invertAssistToggleRect;
+        tooltips[46].text = L"Holding assist button enables right stick for camera look (disables assist knob).";
         // --- Subtitle / hint ---
         // Checkbox
         RectF invertAssistCheckboxRect(invertAssistToggleRect.left + 180, invertAssistToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
@@ -5904,8 +6385,8 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
         PointF useLTAsClutchLabelPos((REAL)useLTAsClutchToggleRect.left, (REAL)useLTAsClutchToggleRect.top + settingsScrollOffset);
         graphics.DrawString(L"Use LT/L2 as Clutch", -1, &rowFont, useLTAsClutchLabelPos, &labelBrush);
         // Use LT/L2 as Clutch
-        tooltips[43].bounds = useLTAsClutchToggleRect;
-        tooltips[43].text = L"Uses LT/L2 trigger as clutch input instead of scroll wheel.";
+        tooltips[47].bounds = useLTAsClutchToggleRect;
+        tooltips[47].text = L"Uses LT/L2 trigger as clutch input instead of scroll wheel.";
         // Checkbox
         RectF useLTAsClutchCheckboxRect(useLTAsClutchToggleRect.left + 180, useLTAsClutchToggleRect.top + settingsScrollOffset, 20.0f, 20.0f);
         SolidBrush useLTAsClutchBoxBrush(useLTAsClutch ? Color(0, 255, 136) : Color(30, 30, 30));
@@ -5984,7 +6465,43 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
                 graphics.DrawString(itemName.c_str(), -1, &rowFont, itemPos, &valueBrush);
             }
         }
+        if (profileDropdownOpen) {
+            int listItemHeight = 25;
+            int itemGap = 5;
+            int listY = profileButtonRect.top + settingsScrollOffset + 25;
+            int totalHeight = (listItemHeight + itemGap) * profileNames.size();
+            RectF listRect((REAL)profileButtonRect.left, (REAL)listY, (REAL)profileButtonRect.right - profileButtonRect.left, (REAL)totalHeight);
 
+            SolidBrush listBrush(Color(30, 30, 30));
+            graphics.FillRectangle(&listBrush, listRect);
+            graphics.DrawRectangle(&profileBoxPen, listRect);
+
+            for (size_t i = 0; i < profileNames.size(); ++i) {
+                int itemY = listY + i * (listItemHeight + itemGap);
+                RectF itemRect((REAL)listRect.X, (REAL)itemY, (REAL)listRect.Width, (REAL)listItemHeight);
+
+                // Hover highlight
+                if ((int)i == hoveredProfileIndex) {
+                    SolidBrush hoverBrush(Color(40, 100, 255, 100)); // Same green as other dropdowns
+                    graphics.FillRectangle(&hoverBrush, itemRect);
+                }
+
+                // Selected profile highlight
+                if ((int)i == currentProfileIndex) {
+                    SolidBrush highlightBrush(Color(80, 100, 255, 100)); // Same color, more opaque
+                    graphics.FillRectangle(&highlightBrush, itemRect);
+                }
+
+                std::string profileName = profileNames[i];
+                if (profileName.size() > 4 && profileName.substr(profileName.size() - 4) == ".ini") {
+                    profileName = profileName.substr(0, profileName.size() - 4);
+                }
+                std::wstring profileNameW(profileName.begin(), profileName.end());
+
+                PointF itemPos(itemRect.X + 8, itemRect.Y + 4);
+                graphics.DrawString(profileNameW.c_str(), -1, &rowFont, itemPos, &valueBrush);
+            }
+        }
         // --- Update max scroll ---
 // --- Update max scroll ---
         if (g_showTooltip) {
@@ -6040,20 +6557,28 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
             int layoutListBottom = (int)(hShifterLayoutButtonRect.bottom + listItemHeight * hShifterLayouts.size());
             lastControlBottom = max(lastControlBottom, layoutListBottom + 20);
         }
-
+        if (profileDropdownOpen) {
+            int listItemHeight = 25;
+            int profileListBottom = (int)(profileButtonRect.bottom + listItemHeight * profileNames.size());
+            lastControlBottom = max(lastControlBottom, profileListBottom + 20);
+        }
         settingsScrollMax = max(0, lastControlBottom - (settingsPanelRect.bottom - settingsPanelRect.top));
 
         for (const auto& tooltip : tooltips) {
             // Special case for sliders only (indices 0-6, 14-16, 19-21, 27, 32) - draw 25px below
             if ((&tooltip >= &tooltips[0] && &tooltip <= &tooltips[6]) ||    // First 7 sliders
-                (&tooltip >= &tooltips[14] && &tooltip <= &tooltips[16]) ||  // Transparency sliders
-                (&tooltip >= &tooltips[19] && &tooltip <= &tooltips[21]) ||  // Steering sensitivity sliders
-                &tooltip == &tooltips[27] ||                                 // Scroll sensitivity slider
-                &tooltip == &tooltips[32]) {                                 // Controller sensitivity slider
+                (&tooltip >= &tooltips[16] && &tooltip <= &tooltips[18]) ||  // Transparency sliders
+                (&tooltip >= &tooltips[21] && &tooltip <= &tooltips[23]) ||
+                (&tooltip >= &tooltips[25] && &tooltip <= &tooltips[26]) ||
+                (&tooltip >= &tooltips[28] && &tooltip <= &tooltips[29]) ||// Steering sensitivity sliders
+                (&tooltip >= &tooltips[30] && &tooltip <= &tooltips[30]) ||
+                (&tooltip >= &tooltips[37] && &tooltip <= &tooltips[36]) ||
+                // Scroll sensitivity slider
+                &tooltip == &tooltips[42]) {                                 // Controller sensitivity slider
                 DrawTooltip(graphics, tooltip, settingsScrollOffset, 25);
             }
             // Special handling for inverted scroll toggle to position it above
-            else if (&tooltip == &tooltips[37]) {
+            else if (&tooltip == &tooltips[47]) {
                 DrawTooltip(graphics, tooltip, settingsScrollOffset, -85); // Position above instead of below
             }
             else {
@@ -6243,54 +6768,80 @@ void DrawStaticShifterElements(Gdiplus::Graphics& graphics)
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     // Horizontal neutral rail
-    graphics.DrawLine(&dynamicRailPen, railX[0].x, centerY, railX[drawRailCount - 1].x, centerY);
-
-    // Vertical rails
-    for (int i = 0; i < drawRailCount; ++i)
+    if (layoutType == 11)
     {
-        int yStart = topY;
-        int yEnd = bottomY;
-
-        bool hasTopGear = false;
-        bool hasBottomGear = false;
-
-        for (auto it = lowerGearPositions.begin(); it != lowerGearPositions.end(); ++it)
-        {
-            POINT pos = it->second;
-            if (pos.x == railX[i].x && pos.y == topY)
-                hasTopGear = true;
-            if (pos.x == railX[i].x && pos.y == bottomY)
-                hasBottomGear = true;
-        }
-
-        for (auto it = highGearPositions.begin(); it != highGearPositions.end(); ++it)
-        {
-            POINT pos = it->second;
-            if (pos.x == railX[i].x && pos.y == topY)
-                hasTopGear = true;
-            if (pos.x == railX[i].x && pos.y == bottomY)
-                hasBottomGear = true;
-        }
-
-        if (!hasTopGear)
-            yStart = centerY;
-        if (!hasBottomGear)
-            yEnd = centerY;
-
-        if (yStart != yEnd)
-            graphics.DrawLine(&dynamicRailPen, railX[i].x, yStart, railX[i].x, yEnd);
+        // PRNDL layout: single vertical rail only, no horizontal rail
+        graphics.DrawLine(&dynamicRailPen, railX[0].x, topY, railX[0].x, bottomY);
     }
-
-    // Draw reverse rail only for layouts that have reverse at top
-    if (layoutType == 1)
+    else
     {
-        graphics.DrawLine(&dynamicRailPen, railX[0].x, topY, railX[0].x, centerY);
+        // Standard H-pattern layouts
+        // Horizontal neutral rail
+        graphics.DrawLine(&dynamicRailPen, railX[0].x, centerY, railX[drawRailCount - 1].x, centerY);
+
+        // Vertical rails
+        for (int i = 0; i < drawRailCount; ++i)
+        {
+            int yStart = topY;
+            int yEnd = bottomY;
+
+            bool hasTopGear = false;
+            bool hasBottomGear = false;
+
+            for (auto it = lowerGearPositions.begin(); it != lowerGearPositions.end(); ++it)
+            {
+                POINT pos = it->second;
+                if (pos.x == railX[i].x && pos.y == topY)
+                    hasTopGear = true;
+                if (pos.x == railX[i].x && pos.y == bottomY)
+                    hasBottomGear = true;
+            }
+
+            for (auto it = highGearPositions.begin(); it != highGearPositions.end(); ++it)
+            {
+                POINT pos = it->second;
+                if (pos.x == railX[i].x && pos.y == topY)
+                    hasTopGear = true;
+                if (pos.x == railX[i].x && pos.y == bottomY)
+                    hasBottomGear = true;
+            }
+
+            if (!hasTopGear)
+                yStart = centerY;
+            if (!hasBottomGear)
+                yEnd = centerY;
+
+            if (yStart != yEnd)
+                graphics.DrawLine(&dynamicRailPen, railX[i].x, yStart, railX[i].x, yEnd);
+        }
+
+        // Draw reverse rail only for layouts that have reverse at top
+        if (layoutType == 1) // Normal layout has reverse at top
+        {
+            graphics.DrawLine(&dynamicRailPen, railX[0].x, topY, railX[0].x, centerY);
+        }
     }
 }
 RECT CalculateRailRedrawArea()
@@ -6299,9 +6850,25 @@ RECT CalculateRailRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     // Calculate boundaries for all rails
@@ -6392,9 +6959,25 @@ bool ShouldRedrawRails()
     int currentDrawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: currentDrawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: currentDrawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: currentDrawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        currentDrawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        currentDrawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        currentDrawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        currentDrawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
     bool railCountChanged = (currentDrawRailCount != lastRedrawRailCount);
 
@@ -6480,7 +7063,7 @@ void DrawStaticGearElements(Gdiplus::Graphics& graphics)
         // Determine if we should hide high gears for this specific layout
         bool hideHighGearsForLayout = hideHighGears;
         // Explicitly enable hideHighGears for layouts with less than 5 gears (where high gears don't exist)
-        if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9)
+        if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9 || layoutType == 11)
         {
             hideHighGearsForLayout = true; // Force hide high gears for these layouts
         }
@@ -6753,9 +7336,25 @@ void DrawBorderless(HDC hdc, int width, int height)
         int drawRailCount = 0;
         switch (layoutType)
         {
-        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+        case 1: // Normal Layout
+        case 3: // Reverse Bottom Layout (First rail)
+        case 4: // Reverse Bottom Layout (Last rail)
+        case 10: // Reverse Top Last Layout
+            drawRailCount = is16GearSet ? 5 : 4;
+            break;
+        case 2: // No Reverse Layout
+            drawRailCount = is16GearSet ? 4 : 3;
+            break;
+        case 5: // 5-Gear Only Layout
+        case 6: // 5-Gear Reverse First Layout
+        case 7: // 4-Gear Reverse Top Layout
+        case 8: // 4-Gear Reverse Bottom Layout
+        case 9: // 4-Gear Reverse Mixed Layout
+            drawRailCount = 3; // Always 3 rails for these layouts
+            break;
+        case 11: // PRNDL Layout
+            drawRailCount = 1; // Only one rail for PRNDL
+            break;
         }
         bool shouldDrawReverse = false;
         std::string reverseGearKey = "R";
@@ -7018,7 +7617,7 @@ void DrawBorderless(HDC hdc, int width, int height)
             }
 
             bool hideHighGearsForLayout = hideHighGears;
-            if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9)
+            if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9 || layoutType == 11)
             {
                 hideHighGearsForLayout = true;
             }
@@ -7063,9 +7662,25 @@ void DrawBorderless(HDC hdc, int width, int height)
         int drawRailCount = 0;
         switch (layoutType)
         {
-        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+        case 1: // Normal Layout
+        case 3: // Reverse Bottom Layout (First rail)
+        case 4: // Reverse Bottom Layout (Last rail)
+        case 10: // Reverse Top Last Layout
+            drawRailCount = is16GearSet ? 5 : 4;
+            break;
+        case 2: // No Reverse Layout
+            drawRailCount = is16GearSet ? 4 : 3;
+            break;
+        case 5: // 5-Gear Only Layout
+        case 6: // 5-Gear Reverse First Layout
+        case 7: // 4-Gear Reverse Top Layout
+        case 8: // 4-Gear Reverse Bottom Layout
+        case 9: // 4-Gear Reverse Mixed Layout
+            drawRailCount = 3; // Always 3 rails for these layouts
+            break;
+        case 11: // PRNDL Layout
+            drawRailCount = 1; // Only one rail for PRNDL
+            break;
         }
 
         int fullWidth = railX[drawRailCount - 1].x - railX[0].x;
@@ -7121,9 +7736,25 @@ void DrawBorderless(HDC hdc, int width, int height)
         int drawRailCount = 0;
         switch (layoutType)
         {
-        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+        case 1: // Normal Layout
+        case 3: // Reverse Bottom Layout (First rail)
+        case 4: // Reverse Bottom Layout (Last rail)
+        case 10: // Reverse Top Last Layout
+            drawRailCount = is16GearSet ? 5 : 4;
+            break;
+        case 2: // No Reverse Layout
+            drawRailCount = is16GearSet ? 4 : 3;
+            break;
+        case 5: // 5-Gear Only Layout
+        case 6: // 5-Gear Reverse First Layout
+        case 7: // 4-Gear Reverse Top Layout
+        case 8: // 4-Gear Reverse Bottom Layout
+        case 9: // 4-Gear Reverse Mixed Layout
+            drawRailCount = 3; // Always 3 rails for these layouts
+            break;
+        case 11: // PRNDL Layout
+            drawRailCount = 1; // Only one rail for PRNDL
+            break;
         }
 
         int barWidth = 8;
@@ -7168,9 +7799,25 @@ void DrawBorderless(HDC hdc, int width, int height)
         int drawRailCount = 0;
         switch (layoutType)
         {
-        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+        case 1: // Normal Layout
+        case 3: // Reverse Bottom Layout (First rail)
+        case 4: // Reverse Bottom Layout (Last rail)
+        case 10: // Reverse Top Last Layout
+            drawRailCount = is16GearSet ? 5 : 4;
+            break;
+        case 2: // No Reverse Layout
+            drawRailCount = is16GearSet ? 4 : 3;
+            break;
+        case 5: // 5-Gear Only Layout
+        case 6: // 5-Gear Reverse First Layout
+        case 7: // 4-Gear Reverse Top Layout
+        case 8: // 4-Gear Reverse Bottom Layout
+        case 9: // 4-Gear Reverse Mixed Layout
+            drawRailCount = 3; // Always 3 rails for these layouts
+            break;
+        case 11: // PRNDL Layout
+            drawRailCount = 1; // Only one rail for PRNDL
+            break;
         }
         if (useHalfClutch)
         {
@@ -7244,9 +7891,25 @@ void DrawYBarOnly(HDC hdc, int width, int height)
         int drawRailCount = 0;
         switch (layoutType)
         {
-        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+        case 1: // Normal Layout
+        case 3: // Reverse Bottom Layout (First rail)
+        case 4: // Reverse Bottom Layout (Last rail)
+        case 10: // Reverse Top Last Layout
+            drawRailCount = is16GearSet ? 5 : 4;
+            break;
+        case 2: // No Reverse Layout
+            drawRailCount = is16GearSet ? 4 : 3;
+            break;
+        case 5: // 5-Gear Only Layout
+        case 6: // 5-Gear Reverse First Layout
+        case 7: // 4-Gear Reverse Top Layout
+        case 8: // 4-Gear Reverse Bottom Layout
+        case 9: // 4-Gear Reverse Mixed Layout
+            drawRailCount = 3; // Always 3 rails for these layouts
+            break;
+        case 11: // PRNDL Layout
+            drawRailCount = 1; // Only one rail for PRNDL
+            break;
         }
 
         int barWidth = 8;
@@ -7288,9 +7951,25 @@ RECT CalculateHShifterBoundaries()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     // Fixed boundaries for entire H-shifter area
@@ -7581,11 +8260,26 @@ RECT CalculateXBarRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
-
     int fullWidth = railX[drawRailCount - 1].x - railX[0].x;
     int xBarWidth = static_cast<int>(fullWidth * 0.7f);
     xBarWidth = max(xBarWidth, 50);
@@ -7620,9 +8314,25 @@ RECT CalculateXBarIndicatorRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int fullWidth = railX[drawRailCount - 1].x - railX[0].x;
@@ -7658,9 +8368,25 @@ RECT CalculateXBarCompleteRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int fullWidth = railX[drawRailCount - 1].x - railX[0].x;
@@ -7741,9 +8467,25 @@ RECT CalculateYBarRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int barWidth = 8;
@@ -7778,9 +8520,25 @@ RECT CalculateYBarFillRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int barWidth = 8;
@@ -7814,9 +8572,25 @@ RECT CalculateYBarCompleteRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int barWidth = 8;
@@ -7890,9 +8664,25 @@ RECT CalculateClutchBarRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int barWidth = 8;
@@ -7943,9 +8733,25 @@ RECT CalculateClutchBarFillRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int barWidth = 8;
@@ -7981,9 +8787,25 @@ RECT CalculateClutchBarCompleteRedrawArea()
     int drawRailCount = 0;
     switch (layoutType)
     {
-    case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-    case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-    case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+    case 1: // Normal Layout
+    case 3: // Reverse Bottom Layout (First rail)
+    case 4: // Reverse Bottom Layout (Last rail)
+    case 10: // Reverse Top Last Layout
+        drawRailCount = is16GearSet ? 5 : 4;
+        break;
+    case 2: // No Reverse Layout
+        drawRailCount = is16GearSet ? 4 : 3;
+        break;
+    case 5: // 5-Gear Only Layout
+    case 6: // 5-Gear Reverse First Layout
+    case 7: // 4-Gear Reverse Top Layout
+    case 8: // 4-Gear Reverse Bottom Layout
+    case 9: // 4-Gear Reverse Mixed Layout
+        drawRailCount = 3; // Always 3 rails for these layouts
+        break;
+    case 11: // PRNDL Layout
+        drawRailCount = 1; // Only one rail for PRNDL
+        break;
     }
 
     int barWidth = 8;
@@ -8348,18 +9170,43 @@ void UpdateKnobFromXInput(HWND hwnd)
     }
 
     // --- Snap detection for ghost / targetKnob ---
+// --- Snap detection for ghost / targetKnob ---
     auto& activeMap = lowerGearPositions;
     std::string snappedGear = "";
-    for (auto& kv : activeMap)
+
+    if (layoutType == 11) // PRNDL layout
     {
-        POINT g = kv.second;
-        std::string gear = kv.first;
-        double dist = sqrt((targetKnob->x - g.x) * (targetKnob->x - g.x) +
-            (targetKnob->y - g.y) * (targetKnob->y - g.y));
-        if (dist < gearSnapInThreshold)
+        // For PRNDL, only consider vertical distance for snapping
+        float closestDist = FLT_MAX;
+
+        for (auto& kv : activeMap)
         {
-            snappedGear = gear;
-            break;
+            POINT g = kv.second;
+            std::string gear = kv.first;
+
+            // For PRNDL, only vertical distance matters
+            double dist = abs(targetKnob->y - g.y);
+            if (dist < gearSnapInThreshold && dist < closestDist)
+            {
+                snappedGear = gear;
+                closestDist = dist;
+            }
+        }
+    }
+    else
+    {
+        // Regular diamond layout snapping
+        for (auto& kv : activeMap)
+        {
+            POINT g = kv.second;
+            std::string gear = kv.first;
+            double dist = sqrt((targetKnob->x - g.x) * (targetKnob->x - g.x) +
+                (targetKnob->y - g.y) * (targetKnob->y - g.y));
+            if (dist < gearSnapInThreshold)
+            {
+                snappedGear = gear;
+                break;
+            }
         }
     }
 
@@ -8421,63 +9268,77 @@ void UpdateKnobFromXInput(HWND hwnd)
 
     else
     {
-        // --- Not snapped: regular rail + lerp logic ---
-        bool insideIntersection = IsInsideIntersection(targetKnob->x, targetKnob->y);
-        if (currentRail == HORIZONTAL)
+        if (layoutType == 11) // PRNDL layout
         {
-            targetKnob->x += (int)roundf(dx);
+            // PRNDL: Vertical movement only with strong horizontal centering
+            targetKnob->y += (int)roundf(dy);
+            targetKnob->x += (int)roundf(dx * 0.1f); // Minimal horizontal movement
+            targetKnob->x += (int)roundf((railX[0].x - targetKnob->x) * 0.3f); // Strong center pull
 
-            if (insideIntersection)
+            // Reset rail state for PRNDL (no rail switching)
+            currentRail = VERTICAL;
+            currentVerticalIndex = 0;
+        }
+        else
+        {
+            // --- Not snapped: regular rail + lerp logic ---
+            bool insideIntersection = IsInsideIntersection(targetKnob->x, targetKnob->y);
+            if (currentRail == HORIZONTAL)
             {
-                targetKnob->y += (int)roundf(dy);
+                targetKnob->x += (int)roundf(dx);
 
-                int railCount = is16GearSet ? 5 : 4;
-                for (int i = 0; i < railCount; ++i)
+                if (insideIntersection)
                 {
-                    int railXPos = railX[i].x;
-                    if (abs(targetKnob->x - railXPos) < enterVerticalThreshold && abs(dy) > 0)
+                    targetKnob->y += (int)roundf(dy);
+
+                    int railCount = is16GearSet ? 5 : 4;
+                    for (int i = 0; i < railCount; ++i)
                     {
-                        bool movingDown = dy > 0;
-                        bool movingUp = dy < 0;
-                        bool canMoveVertically = false;
-
-                        for (auto& kv : activeMap)
+                        int railXPos = railX[i].x;
+                        if (abs(targetKnob->x - railXPos) < enterVerticalThreshold && abs(dy) > 0)
                         {
-                            if (kv.second.x == railXPos)
+                            bool movingDown = dy > 0;
+                            bool movingUp = dy < 0;
+                            bool canMoveVertically = false;
+
+                            for (auto& kv : activeMap)
                             {
-                                if (movingDown && kv.second.y == bottomY)
-                                    canMoveVertically = true;
-                                if (movingUp && kv.second.y == topY)
-                                    canMoveVertically = true;
+                                if (kv.second.x == railXPos)
+                                {
+                                    if (movingDown && kv.second.y == bottomY)
+                                        canMoveVertically = true;
+                                    if (movingUp && kv.second.y == topY)
+                                        canMoveVertically = true;
+                                }
                             }
-                        }
 
-                        if (canMoveVertically)
-                        {
-                            currentRail = VERTICAL;
-                            currentVerticalIndex = i;
+                            if (canMoveVertically)
+                            {
+                                currentRail = VERTICAL;
+                                currentVerticalIndex = i;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
+                else
+                {
+                    targetKnob->y += (int)roundf(dy * 0.2f);
+                    targetKnob->y += (int)roundf((centerY - targetKnob->y) * 0.05f);
+                }
             }
-            else
+            else if (currentRail == VERTICAL && currentVerticalIndex != -1)
             {
-                targetKnob->y += (int)roundf(dy * 0.2f);
-                targetKnob->y += (int)roundf((centerY - targetKnob->y) * 0.05f);
-            }
-        }
-        else if (currentRail == VERTICAL && currentVerticalIndex != -1)
-        {
-            targetKnob->y += (int)roundf(dy);
-            int railCenter = railX[currentVerticalIndex].x;
-            targetKnob->x += (int)roundf(dx * 0.2f);
-            targetKnob->x += (int)roundf((railCenter - targetKnob->x) * 0.07f);
+                targetKnob->y += (int)roundf(dy);
+                int railCenter = railX[currentVerticalIndex].x;
+                targetKnob->x += (int)roundf(dx * 0.2f);
+                targetKnob->x += (int)roundf((railCenter - targetKnob->x) * 0.07f);
 
-            if (IsInsideIntersection(targetKnob->x, targetKnob->y) && abs(dx) > 0)
-            {
-                currentRail = HORIZONTAL;
-                currentVerticalIndex = -1;
+                if (IsInsideIntersection(targetKnob->x, targetKnob->y) && abs(dx) > 0)
+                {
+                    currentRail = HORIZONTAL;
+                    currentVerticalIndex = -1;
+                }
             }
         }
     }
@@ -9081,7 +9942,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         SetTimer(hwnd, 1, 10, nullptr); // 10 ms = ~100 FPS max achievable
         RefreshProcessList();  // <-- ADD THIS LINE HERE
-        tooltips.resize(50);
+        tooltips.resize(60);
         // Update check thread - now safely scoped
         std::thread updateThread([]() {
             CheckForUpdates();
@@ -9156,6 +10017,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 if (!isRightButtonHeld)
                 {
                     UpdateVJoyFromMouse(rm, raw->header.hDevice);
+                    HandleScrollInput(rm);
                 }
             }
             if (raw->header.dwType == RIM_TYPEMOUSE)
@@ -9279,6 +10141,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     // --- Compute movement ---
                     int dx = raw->data.mouse.lLastX;
                     int dy = raw->data.mouse.lLastY;
+
                     // NEW: shave low-end sensitivity
                     float effectiveSens = powf(knobSensitivity, 1.5f);  // exponent >1 compresses low values gently
                     if (effectiveSens < 0.0f) effectiveSens = 0.0f; // clamp to 0
@@ -9294,186 +10157,272 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                         delete[] lpb;
                         return 0;
                     }
-
-                    // --- Check diamond intersection ---
-                    bool insideIntersection = IsInsideIntersection(knobPos.x, knobPos.y);
-
-                    // Lerp factor for smooth movement into rails (only applies when not snapped)
-                    const float lerpSpeed = 0.2f;
-                    const float lerpSpeedHorizontal = 0.05f;
-                    const float lerpSpeedVertical = 0.07f;
-                    int railCount = is16GearSet ? 5 : 4;
                     auto& activeMap = lowerGearPositions;
 
-                    // --- Snap detection ---
-                    std::string snappedGear = "";
-                    for (auto& kv : activeMap)
+                    if (layoutType == 11) // PRNDL layout
                     {
-                        POINT g = kv.second;
-                        std::string gear = kv.first;
-
-                        double dist = sqrt((knobPos.x - g.x) * (knobPos.x - g.x) + (knobPos.y - g.y) * (knobPos.y - g.y));
-                        if (dist < gearSnapInThreshold)
-                        {
-                            snappedGear = gear;
-                            break;
-                        }
-                    }
-
-                    bool isSnapped = !snappedGear.empty();
-
-                    // --- Handle snapped state ---
-                    // --- Handle snapped state ---
-                    if (isSnapped)
-                    {
-                        const int maxHorizontalOffset = 20;            // max pixels allowed from snapped X
-                        knobPos.x += int(dx * effectiveSens * 0.2f);
-
-                        // Clamp around snapped gear X
-                        int snappedX = activeMap[snappedGear].x;
-                        if (knobPos.x < snappedX - maxHorizontalOffset)
-                            knobPos.x = snappedX - maxHorizontalOffset;
-                        if (knobPos.x > snappedX + maxHorizontalOffset)
-                            knobPos.x = snappedX + maxHorizontalOffset;
-
-                        // Allow full vertical movement
+                        // Vertical movement only for PRNDL
                         knobPos.y += int(dy * effectiveSens);
 
-                        // --- DEBUG: Log snappedGear ---
-                        char buf[256];
-                        //sprintf_s(buf, "Snapped detected: snappedGear='%s'\n", snappedGear.c_str());
-                        //OutputDebugStringA(buf);
+                        // Minimal horizontal movement with strong centering
+                        knobPos.x += int(dx * effectiveSens * 0.1f);
+                        knobPos.x += int((railX[0].x - knobPos.x) * 0.3f); // Strong center pull
 
-                        // Always set gear key when snapped
-                        SetGearKey(snappedGear);
+                        // --- Snap detection for PRNDL ---
+                        std::string snappedGear = "";
+                        float closestDist = FLT_MAX;
 
-                        // Update activeGear and lock state
-                        activeGear = snappedGear;
-                        lockedInGear = true;
-
-                        // Release neutral key if held
-                        if (neutralHeld)
+                        for (auto& kv : activeMap)
                         {
-                            INPUT input = {};
-                            input.type = INPUT_KEYBOARD;
-                            input.ki.wVk = gearInputMap["N"].code;
-                            input.ki.dwFlags = KEYEVENTF_KEYUP;
-                            SendInput(1, &input, sizeof(INPUT));
-                            neutralHeld = false;
-                        }
-                    }
+                            POINT g = kv.second;
+                            std::string gear = kv.first;
 
-                    else
-                    {
-                        // --- Not snapped: regular rail movement with lerp corrections ---
-
-                        if (currentRail == HORIZONTAL)
-                        {
-                            knobPos.x += ApplyKnobMotion(dx, effectiveSens);
-
-
-                            if (insideIntersection)
+                            // For PRNDL, only consider vertical distance for snapping
+                            double dist = abs(knobPos.y - g.y);
+                            if (dist < gearSnapInThreshold && dist < closestDist)
                             {
-                                knobPos.y += ApplyKnobMotion(dy, effectiveSens);
+                                snappedGear = gear;
+                                closestDist = dist;
+                            }
+                        }
 
+                        bool isSnapped = !snappedGear.empty();
 
-                                for (int i = 0; i < railCount; ++i)
+                        // --- Handle snapped state for PRNDL ---
+                        if (isSnapped)
+                        {
+                            // When snapped, allow free vertical movement but keep gear engaged
+                            // Only apply minimal smoothing toward the gear position
+                            POINT targetPos = activeMap[snappedGear];
+                            knobPos.y = int(knobPos.y + (targetPos.y - knobPos.y) * 0.1f); // Very light pull
+                            knobPos.x = int(knobPos.x + (targetPos.x - knobPos.x) * 0.3f); // Keep centered
+
+                            // Set gear key
+                            SetGearKey(snappedGear);
+
+                            // Update active gear state
+                            activeGear = snappedGear;
+                            lockedInGear = true;
+
+                            // Release neutral key if held
+                            if (neutralHeld)
+                            {
+                                INPUT input = {};
+                                input.type = INPUT_KEYBOARD;
+                                input.ki.wVk = gearInputMap["N"].code;
+                                input.ki.dwFlags = KEYEVENTF_KEYUP;
+                                SendInput(1, &input, sizeof(INPUT));
+                                neutralHeld = false;
+                            }
+                        }
+                        else
+                        {
+                            // Not snapped - check if we left a gear
+                            if (lockedInGear && !activeGear.empty())
+                            {
+                                // Check if we moved far enough from the previously active gear
+                                POINT prevGearPos = activeMap[activeGear];
+                                double dist = abs(knobPos.y - prevGearPos.y);
+
+                                if (dist > gearSnapOutThreshold)
                                 {
-                                    int railXPos = railX[i].x;
-                                    if (abs(knobPos.x - railXPos) < enterVerticalThreshold && abs(dy) > 0)
-                                    {
-                                        bool movingDown = dy > 0;
-                                        bool movingUp = dy < 0;
-                                        bool canMoveVertically = false;
-
-                                        for (auto& kv : activeMap)
-                                        {
-                                            if (kv.second.x == railXPos)
-                                            {
-                                                if (movingDown && kv.second.y == bottomY)
-                                                    canMoveVertically = true;
-                                                if (movingUp && kv.second.y == topY)
-                                                    canMoveVertically = true;
-                                            }
-                                        }
-
-                                        if (canMoveVertically)
-                                        {
-                                            currentRail = VERTICAL;
-                                            currentVerticalIndex = i;
-                                        }
-                                        break;
-                                    }
+                                    // We've moved far enough, release the gear
+                                    activeGear = "";
+                                    lockedInGear = false;
+                                    ReleaseGearKey();
+                                }
+                                else
+                                {
+                                    // Still close to previous gear, light pull back toward it
+                                    knobPos.y = int(knobPos.y + (prevGearPos.y - knobPos.y) * 0.1f);
                                 }
                             }
-                            else
-                            {
-                                // Soft horizontal lock: blend mouse input with center pull
-                                knobPos.y += int(dy * effectiveSens * 0.2f);
-                                knobPos.y += int((centerY - knobPos.y) * 0.05f);
-                            }
-                        }
-                        else if (currentRail == VERTICAL && currentVerticalIndex != -1)
-                        {
-                            knobPos.y += int(dy * effectiveSens);
-
-                            int railCenter = railX[currentVerticalIndex].x;
-
-                            knobPos.x += int(ApplyKnobMotion(dx, effectiveSens) * 0.2f);
-
-                            knobPos.x += int((railCenter - knobPos.x) * 0.07f);
-
-                            if (IsInsideIntersection(knobPos.x, knobPos.y) && abs(dx) > 0)
-                            {
-                                currentRail = HORIZONTAL;
-                                currentVerticalIndex = -1;
-                            }
                         }
 
-                        // --- Snap to gear if close ---
+                        // Reset rail state for PRNDL (no rail switching)
+                        currentRail = VERTICAL;
+                        currentVerticalIndex = 0;
+                    }
+                    else
+                    {
+                        // --- Check diamond intersection ---
+                        bool insideIntersection = IsInsideIntersection(knobPos.x, knobPos.y);
+
+                        // Lerp factor for smooth movement into rails (only applies when not snapped)
+                        const float lerpSpeed = 0.2f;
+                        const float lerpSpeedHorizontal = 0.05f;
+                        const float lerpSpeedVertical = 0.07f;
+                        int railCount = is16GearSet ? 5 : 4;
+
+                        // --- Snap detection ---
+                        std::string snappedGear = "";
                         for (auto& kv : activeMap)
                         {
                             POINT g = kv.second;
                             std::string gear = kv.first;
 
                             double dist = sqrt((knobPos.x - g.x) * (knobPos.x - g.x) + (knobPos.y - g.y) * (knobPos.y - g.y));
-                            bool inside = dist < gearSnapInThreshold;
-
-                            if (gearInsideRadius.find(gear) == gearInsideRadius.end())
-                                gearInsideRadius[gear] = false;
-
-                            if (inside)
+                            if (dist < gearSnapInThreshold)
                             {
-                                if (!gearInsideRadius[gear])
-                                {
-                                    activeGear = gear;
-                                    lockedInGear = true;
-                                    SetGearKey(gear); // ADD THIS LINE
-
-                                }
-
-                                // Smoothly move knob toward gear
-                                if (lockedInGear)
-                                {
-                                    knobPos.x = int(knobPos.x + (g.x - knobPos.x) * snapSpeed);
-                                    knobPos.y = int(knobPos.y + (g.y - knobPos.y) * snapSpeed);
-                                }
-
-                                gearInsideRadius[gear] = true;
+                                snappedGear = gear;
+                                break;
                             }
-                            else
+                        }
+
+                        bool isSnapped = !snappedGear.empty();
+
+                        // --- Handle snapped state ---
+                        // --- Handle snapped state ---
+                        if (isSnapped)
+                        {
+                            const int maxHorizontalOffset = 20;            // max pixels allowed from snapped X
+                            knobPos.x += int(dx * effectiveSens * 0.2f);
+
+                            // Clamp around snapped gear X
+                            int snappedX = activeMap[snappedGear].x;
+                            if (knobPos.x < snappedX - maxHorizontalOffset)
+                                knobPos.x = snappedX - maxHorizontalOffset;
+                            if (knobPos.x > snappedX + maxHorizontalOffset)
+                                knobPos.x = snappedX + maxHorizontalOffset;
+
+                            // Allow full vertical movement
+                            knobPos.y += int(dy * effectiveSens);
+
+                            // --- DEBUG: Log snappedGear ---
+                            char buf[256];
+                            //sprintf_s(buf, "Snapped detected: snappedGear='%s'\n", snappedGear.c_str());
+                            //OutputDebugStringA(buf);
+
+                            // Always set gear key when snapped
+                            SetGearKey(snappedGear);
+
+                            // Update activeGear and lock state
+                            activeGear = snappedGear;
+                            lockedInGear = true;
+
+                            // Release neutral key if held
+                            if (neutralHeld)
                             {
-                                gearInsideRadius[gear] = false;
-                                if (activeGear == gear)
+                                INPUT input = {};
+                                input.type = INPUT_KEYBOARD;
+                                input.ki.wVk = gearInputMap["N"].code;
+                                input.ki.dwFlags = KEYEVENTF_KEYUP;
+                                SendInput(1, &input, sizeof(INPUT));
+                                neutralHeld = false;
+                            }
+                        }
+
+                        else
+                        {
+                            // --- Not snapped: regular rail movement with lerp corrections ---
+
+                            if (currentRail == HORIZONTAL)
+                            {
+                                knobPos.x += ApplyKnobMotion(dx, effectiveSens);
+
+
+                                if (insideIntersection)
                                 {
-                                    activeGear = "";
-                                    lockedInGear = false;
-                                    ReleaseGearKey();
+                                    knobPos.y += ApplyKnobMotion(dy, effectiveSens);
+
+
+                                    for (int i = 0; i < railCount; ++i)
+                                    {
+                                        int railXPos = railX[i].x;
+                                        if (abs(knobPos.x - railXPos) < enterVerticalThreshold && abs(dy) > 0)
+                                        {
+                                            bool movingDown = dy > 0;
+                                            bool movingUp = dy < 0;
+                                            bool canMoveVertically = false;
+
+                                            for (auto& kv : activeMap)
+                                            {
+                                                if (kv.second.x == railXPos)
+                                                {
+                                                    if (movingDown && kv.second.y == bottomY)
+                                                        canMoveVertically = true;
+                                                    if (movingUp && kv.second.y == topY)
+                                                        canMoveVertically = true;
+                                                }
+                                            }
+
+                                            if (canMoveVertically)
+                                            {
+                                                currentRail = VERTICAL;
+                                                currentVerticalIndex = i;
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // Soft horizontal lock: blend mouse input with center pull
+                                    knobPos.y += int(dy * effectiveSens * 0.2f);
+                                    knobPos.y += int((centerY - knobPos.y) * 0.05f);
+                                }
+                            }
+                            else if (currentRail == VERTICAL && currentVerticalIndex != -1)
+                            {
+                                knobPos.y += int(dy * effectiveSens);
+
+                                int railCenter = railX[currentVerticalIndex].x;
+
+                                knobPos.x += int(ApplyKnobMotion(dx, effectiveSens) * 0.2f);
+
+                                knobPos.x += int((railCenter - knobPos.x) * 0.07f);
+
+                                if (IsInsideIntersection(knobPos.x, knobPos.y) && abs(dx) > 0)
+                                {
+                                    currentRail = HORIZONTAL;
+                                    currentVerticalIndex = -1;
+                                }
+                            }
+
+                            // --- Snap to gear if close ---
+                            for (auto& kv : activeMap)
+                            {
+                                POINT g = kv.second;
+                                std::string gear = kv.first;
+
+                                double dist = sqrt((knobPos.x - g.x) * (knobPos.x - g.x) + (knobPos.y - g.y) * (knobPos.y - g.y));
+                                bool inside = dist < gearSnapInThreshold;
+
+                                if (gearInsideRadius.find(gear) == gearInsideRadius.end())
+                                    gearInsideRadius[gear] = false;
+
+                                if (inside)
+                                {
+                                    if (!gearInsideRadius[gear])
+                                    {
+                                        activeGear = gear;
+                                        lockedInGear = true;
+                                        SetGearKey(gear); // ADD THIS LINE
+
+                                    }
+
+                                    // Smoothly move knob toward gear
+                                    if (lockedInGear)
+                                    {
+                                        knobPos.x = int(knobPos.x + (g.x - knobPos.x) * snapSpeed);
+                                        knobPos.y = int(knobPos.y + (g.y - knobPos.y) * snapSpeed);
+                                    }
+
+                                    gearInsideRadius[gear] = true;
+                                }
+                                else
+                                {
+                                    gearInsideRadius[gear] = false;
+                                    if (activeGear == gear)
+                                    {
+                                        activeGear = "";
+                                        lockedInGear = false;
+                                        ReleaseGearKey();
+                                    }
                                 }
                             }
                         }
                     }
-
                     // --- Clamp to window bounds ---
                     if (knobPos.x < knobMinX)
                         knobPos.x = knobMinX;
@@ -9636,13 +10585,306 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             ToggleBorderless(hwnd);
         }
-        break;
+        if (creatingNewProfile) {
+            switch (wParam) {
+            case VK_LEFT:
+                if (profileTextSelectionStart > 0) {
+                    profileTextSelectionStart--;
+                    profileTextSelectionEnd = profileTextSelectionStart;
+                    profileTextSelected = false;
+                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                }
+                return 0;
 
+            case VK_RIGHT:
+                if (profileTextSelectionStart < newProfileName.length()) {
+                    profileTextSelectionStart++;
+                    profileTextSelectionEnd = profileTextSelectionStart;
+                    profileTextSelected = false;
+                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                }
+                return 0;
+
+            case VK_HOME:
+                profileTextSelectionStart = 0;
+                profileTextSelectionEnd = 0;
+                profileTextSelected = false;
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                return 0;
+
+            case VK_END:
+                profileTextSelectionStart = newProfileName.length();
+                profileTextSelectionEnd = profileTextSelectionStart;
+                profileTextSelected = false;
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                return 0;
+
+            case VK_ESCAPE:
+                creatingNewProfile = false;
+                profileTextSelected = false;
+                newProfileName = "New Profile";
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                return 0;
+            }
+        }
+        break;
+    case WM_CHAR:
+    {
+        if (creatingNewProfile) {
+            if (wParam == VK_RETURN) {
+                // Enter pressed - create the profile
+                if (!newProfileName.empty()) { // Removed the "New Profile" check
+                    CreateNewProfile(hwnd);
+                    creatingNewProfile = false;
+                    profileTextSelected = false;
+                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                }
+            }
+            else if (wParam == VK_BACK) {
+                // Backspace - delete selected text or character before cursor
+                if (!newProfileName.empty()) {
+                    if (profileTextSelected && profileTextSelectionStart < profileTextSelectionEnd) {
+                        // Delete selected text
+                        newProfileName.erase(profileTextSelectionStart, profileTextSelectionEnd - profileTextSelectionStart);
+                        profileTextSelectionEnd = profileTextSelectionStart;
+                    }
+                    else if (profileTextSelectionStart > 0) {
+                        // Delete character before cursor
+                        newProfileName.erase(profileTextSelectionStart - 1, 1);
+                        profileTextSelectionStart--;
+                        profileTextSelectionEnd = profileTextSelectionStart;
+                    }
+                    profileTextSelected = false;
+                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                }
+            }
+            else if (wParam >= 32 && wParam <= 126) {
+                // Printable characters - replace selection or insert
+                char newChar = (char)wParam;
+
+                if (profileTextSelected && profileTextSelectionStart < profileTextSelectionEnd) {
+                    // Replace selected text
+                    newProfileName.erase(profileTextSelectionStart, profileTextSelectionEnd - profileTextSelectionStart);
+                    profileTextSelectionEnd = profileTextSelectionStart;
+                }
+
+                // Insert new character
+                newProfileName.insert(profileTextSelectionStart, 1, newChar);
+                profileTextSelectionStart++;
+                profileTextSelectionEnd = profileTextSelectionStart;
+                profileTextSelected = false;
+
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            }
+            return 0;
+        }
+        break;
+    }
     case WM_LBUTTONDOWN:
     {
         int mouseX = GET_X_LPARAM(lParam);
         int mouseY = GET_Y_LPARAM(lParam);
         POINT pt = { mouseX, mouseY };
+
+        // Handle ALL dropdown clicks first and block any other processing when dropdowns are open
+        if (profileDropdownOpen || gearLayoutDropdownOpen || hShifterLayoutDropdownOpen)
+        {
+            bool handledInDropdown = false;
+
+            // Handle profile dropdown clicks
+            if (profileDropdownOpen) {
+                int listItemHeight = 25;
+                int itemGap = 5;
+                int listY = profileButtonRect.top + 25; // Base Y position without scroll offset
+
+                RECT dropdownRect = {
+                    profileButtonRect.left,
+                    listY + settingsScrollOffset,
+                    profileButtonRect.right,
+                    listY + settingsScrollOffset + (int)((listItemHeight + itemGap) * profileNames.size())
+                };
+
+                if (PtInRect(&dropdownRect, pt)) {
+                    // Check if clicking on existing profiles
+                    for (size_t i = 0; i < profileNames.size(); ++i) {
+                        RECT itemRect = {
+                            dropdownRect.left,
+                            dropdownRect.top + (LONG)(i * (listItemHeight + itemGap)),
+                            dropdownRect.right,
+                            dropdownRect.top + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
+                        };
+
+                        if (PtInRect(&itemRect, pt)) {
+                            SwitchProfile((int)i, hwnd);
+                            profileDropdownOpen = false;
+                            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                            handledInDropdown = true;
+                            break;
+                        }
+                    }
+                }
+
+                // If we clicked anywhere (inside or outside dropdown), close it and block further processing
+                if (!handledInDropdown) {
+                    profileDropdownOpen = false;
+                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                }
+                return 0; // Always return here when profile dropdown was open
+            }
+
+            // Handle gear layout dropdown clicks
+            if (gearLayoutDropdownOpen)
+            {
+                int listItemHeight = 25;
+                int itemGap = 5;
+                int listY = gearLayoutButtonRect.top + settingsScrollOffset + 25;
+                int totalHeight = (listItemHeight + itemGap) * gearLayouts.size();
+
+                RECT dropdownRect = {
+                    gearLayoutButtonRect.left,
+                    listY,
+                    gearLayoutButtonRect.right,
+                    listY + totalHeight
+                };
+
+                if (PtInRect(&dropdownRect, pt))
+                {
+                    for (size_t i = 0; i < gearLayouts.size(); ++i)
+                    {
+                        RECT itemRect = {
+                            dropdownRect.left,
+                            listY + (LONG)(i * (listItemHeight + itemGap)),
+                            dropdownRect.right,
+                            listY + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
+                        };
+                        if (PtInRect(&itemRect, pt))
+                        {
+                            currentGearLayout = (int)i;
+                            gearLabelOverride = gearLayouts[i];
+                            gearLayoutDropdownOpen = false;
+                            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                            ComputeLayout(hwnd);
+                            ComputeIntersections();
+                            handledInDropdown = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!handledInDropdown) {
+                    gearLayoutDropdownOpen = false;
+                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                }
+                return 0; // Always return here when gear layout dropdown was open
+            }
+
+            // Handle h-shifter layout dropdown clicks
+            if (hShifterLayoutDropdownOpen)
+            {
+                int listItemHeight = 25;
+                int itemGap = 5;
+                int listY = hShifterLayoutButtonRect.top + settingsScrollOffset + 25;
+                int totalHeight = (listItemHeight + itemGap) * hShifterLayouts.size();
+
+                RECT dropdownRect = {
+                    hShifterLayoutButtonRect.left,
+                    listY,
+                    hShifterLayoutButtonRect.right,
+                    listY + totalHeight
+                };
+
+                if (PtInRect(&dropdownRect, pt))
+                {
+                    for (size_t i = 0; i < hShifterLayouts.size(); ++i)
+                    {
+                        RECT itemRect = {
+                            dropdownRect.left,
+                            listY + (LONG)(i * (listItemHeight + itemGap)),
+                            dropdownRect.right,
+                            listY + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
+                        };
+                        if (PtInRect(&itemRect, pt))
+                        {
+                            currentHShifterLayout = hShifterLayouts[i].id;
+                            layoutType = currentHShifterLayout;
+                            hShifterLayoutDropdownOpen = false;
+                            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                            ComputeLayout(hwnd);
+                            ComputeIntersections();
+                            handledInDropdown = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!handledInDropdown) {
+                    hShifterLayoutDropdownOpen = false;
+                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                }
+                return 0; // Always return here when h-shifter dropdown was open
+            }
+
+            return 0; // Safety return
+        }
+        if (creatingNewProfile) {
+            RECT adjustedProfileButtonRect = {
+                profileButtonRect.left,
+                profileButtonRect.top + settingsScrollOffset,
+                profileButtonRect.right,
+                profileButtonRect.bottom + settingsScrollOffset
+            };
+            RECT adjustedCreateProfileButtonRect = {
+                createProfileButtonRect.left,
+                createProfileButtonRect.top + settingsScrollOffset,
+                createProfileButtonRect.right,
+                createProfileButtonRect.bottom + settingsScrollOffset
+            };
+
+            // Check if click is NOT in the profile creation area
+            if (!PtInRect(&adjustedProfileButtonRect, pt) && !PtInRect(&adjustedCreateProfileButtonRect, pt)) {
+                // Clicked outside profile creation area - create the profile
+                if (!newProfileName.empty()) {
+                    CreateNewProfile(hwnd);
+                }
+                creatingNewProfile = false;
+                profileTextSelected = false;
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                return 0; // Block further processing
+            }
+            // If click is inside profile creation area, continue with normal processing
+        }
+
+        // Only process these if NO dropdowns are open
+        RECT adjustedProfileButtonRect = {
+            profileButtonRect.left,
+            profileButtonRect.top + settingsScrollOffset,
+            profileButtonRect.right,
+            profileButtonRect.bottom + settingsScrollOffset
+        };
+        if (PtInRect(&adjustedProfileButtonRect, pt)) {
+            RefreshProfilesList();
+            profileDropdownOpen = true;
+            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            return 0;
+        }
+
+        RECT adjustedCreateProfileButtonRect = {
+            createProfileButtonRect.left,
+            createProfileButtonRect.top + settingsScrollOffset,
+            createProfileButtonRect.right,
+            createProfileButtonRect.bottom + settingsScrollOffset
+        };
+        if (PtInRect(&adjustedCreateProfileButtonRect, pt)) {
+            creatingNewProfile = true;
+            newProfileName = "New Profile";
+            profileTextSelected = true;
+            profileTextSelectionStart = 0;
+            profileTextSelectionEnd = newProfileName.length();
+            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            return 0;
+        }
+
+
         // --- Block clicks through dropdown ---
         RECT togglePanelRectHit = {
             (LONG)togglePanelRectUnified.X,
@@ -10053,7 +11295,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 g_xinputBlockEnabled = !g_xinputBlockEnabled;
                 InvalidateRect(hwnd, &settingsPanelRect, FALSE);
             }
+            r = GetScrolledRect(smoothScrollSlider);
+            if (PtInRect(&r, pt))
+            {
+                draggingSmoothScrollSlider = true;
+                SetCapture(hwnd);
+            }
 
+            r = GetScrolledRect(brakeresistanceSlider);
+            if (PtInRect(&r, pt))
+            {
+                draggingBrakeResistanceSlider = true;
+                SetCapture(hwnd);
+            }
+
+            r = GetScrolledRect(accelerationresistanceSlider);
+            if (PtInRect(&r, pt))
+            {
+                draggingAccelerationResistanceSlider = true;
+                SetCapture(hwnd);
+            }
             r = GetScrolledRect(snapSpeedSliderRect);
             if (PtInRect(&r, pt))
             {
@@ -10417,151 +11678,186 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
     }
 
-case WM_MOUSEMOVE:
-{
-    int mouseX = GET_X_LPARAM(lParam);
-    int mouseY = GET_Y_LPARAM(lParam);
-    POINT pt = { mouseX, mouseY };
-    POINT adjustedPt = { mouseX, mouseY - settingsScrollOffset };
-
-    // --- DISABLE TOOLTIP WHEN DROPDOWNS ARE OPEN ---
-    if (gearLayoutDropdownOpen || hShifterLayoutDropdownOpen)
+    case WM_MOUSEMOVE:
     {
-        // Cancel any active tooltip timers and hide current tooltip
-        if (currentTooltip) {
-            KillTimer(hwnd, currentTooltip->timerId);
-            currentTooltip->show = false;
-            currentTooltip = nullptr;
-            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-        }
-        g_showTooltip = false;
+        int mouseX = GET_X_LPARAM(lParam);
+        int mouseY = GET_Y_LPARAM(lParam);
+        POINT pt = { mouseX, mouseY };
+        POINT adjustedPt = { mouseX, mouseY - settingsScrollOffset };
 
-        // Don't break - continue to process dropdown hovers and sliders
-    }
-    else
-    {
-        // Only process tooltips when dropdowns are closed
-        // Check hover for all tooltips
-        TooltipInfo* hoveredTooltip = nullptr;
-
-        for (auto& tooltip : tooltips) {
-            if (PtInRect(&tooltip.bounds, adjustedPt)) {  // ← Use adjustedPt here
-                hoveredTooltip = &tooltip;
-                break;
-            }
-        }
-
-        // Start timer for new hover, cancel for others
-        if (hoveredTooltip && hoveredTooltip != currentTooltip) {
-            // Cancel previous timer
+        // --- DISABLE TOOLTIP WHEN DROPDOWNS ARE OPEN ---
+        if (profileDropdownOpen || gearLayoutDropdownOpen || hShifterLayoutDropdownOpen)
+        {
+            // Cancel any active tooltip timers and hide current tooltip
             if (currentTooltip) {
                 KillTimer(hwnd, currentTooltip->timerId);
                 currentTooltip->show = false;
+                currentTooltip = nullptr;
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
             }
+            g_showTooltip = false;
 
-            // Start new timer
-            currentTooltip = hoveredTooltip;
-            currentTooltip->timerId = SetTimer(hwnd, 1001, 500, nullptr); // 500ms delay
+            // Don't break - continue to process dropdown hovers and sliders
         }
-        else if (!hoveredTooltip && currentTooltip) {
-            // No hover, hide current tooltip
-            KillTimer(hwnd, currentTooltip->timerId);
-            currentTooltip->show = false;
-            currentTooltip = nullptr;
-            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-        }
-
-        // Check if mouse is over the special tooltip (g_tooltipBounds)
-        g_showTooltip = (mouseX >= g_tooltipBounds.left && mouseX <= g_tooltipBounds.right &&
-            mouseY >= g_tooltipBounds.top && mouseY <= g_tooltipBounds.bottom);
-
-        // Only redraw if tooltip state changed
-        static bool lastTooltipState = false;
-        if (g_showTooltip != lastTooltipState) {
-            lastTooltipState = g_showTooltip;
-            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-        }
-    }
-
-    // Reset hover states (this should happen regardless of dropdown state)
-    int prevGearHover = hoveredGearLayoutIndex;
-    int prevHShifterHover = hoveredHShifterLayoutIndex;
-    hoveredGearLayoutIndex = -1;
-    hoveredHShifterLayoutIndex = -1;
-
-    // Check for gear layout dropdown hover
-    if (gearLayoutDropdownOpen)
-    {
-        int listItemHeight = 25;
-        int itemGap = 5;
-        int listY = gearLayoutButtonRect.top + settingsScrollOffset + 25;
-        int totalHeight = (listItemHeight + itemGap) * gearLayouts.size();
-
-        RECT dropdownRect = {
-            gearLayoutButtonRect.left,
-            listY,
-            gearLayoutButtonRect.right,
-            listY + totalHeight
-        };
-
-        if (PtInRect(&dropdownRect, pt))
+        else
         {
-            for (size_t i = 0; i < gearLayouts.size(); ++i)
-            {
-                RECT itemRect = {
-                    dropdownRect.left,
-                    listY + (LONG)(i * (listItemHeight + itemGap)),
-                    dropdownRect.right,
-                    listY + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
-                };
-                if (PtInRect(&itemRect, pt))
-                {
-                    hoveredGearLayoutIndex = (int)i;
+            // Only process tooltips when dropdowns are closed
+            // Check hover for all tooltips
+            TooltipInfo* hoveredTooltip = nullptr;
+
+            for (auto& tooltip : tooltips) {
+                if (PtInRect(&tooltip.bounds, adjustedPt)) {  // ← Use adjustedPt here
+                    hoveredTooltip = &tooltip;
                     break;
                 }
             }
+
+            // Start timer for new hover, cancel for others
+            if (hoveredTooltip && hoveredTooltip != currentTooltip) {
+                // Cancel previous timer
+                if (currentTooltip) {
+                    KillTimer(hwnd, currentTooltip->timerId);
+                    currentTooltip->show = false;
+                }
+
+                // Start new timer
+                currentTooltip = hoveredTooltip;
+                currentTooltip->timerId = SetTimer(hwnd, 1001, 500, nullptr); // 500ms delay
+            }
+            else if (!hoveredTooltip && currentTooltip) {
+                // No hover, hide current tooltip
+                KillTimer(hwnd, currentTooltip->timerId);
+                currentTooltip->show = false;
+                currentTooltip = nullptr;
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            }
+
+            // Check if mouse is over the special tooltip (g_tooltipBounds)
+            g_showTooltip = (mouseX >= g_tooltipBounds.left && mouseX <= g_tooltipBounds.right &&
+                mouseY >= g_tooltipBounds.top && mouseY <= g_tooltipBounds.bottom);
+
+            // Only redraw if tooltip state changed
+            static bool lastTooltipState = false;
+            if (g_showTooltip != lastTooltipState) {
+                lastTooltipState = g_showTooltip;
+                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            }
         }
-    }
 
-    // Check for h-shifter layout dropdown hover
-    if (hShifterLayoutDropdownOpen)
-    {
-        int listItemHeight = 25;
-        int itemGap = 5;
-        int listY = hShifterLayoutButtonRect.top + settingsScrollOffset + 25;
-        int totalHeight = (listItemHeight + itemGap) * hShifterLayouts.size();
-
-        RECT dropdownRect = {
-            hShifterLayoutButtonRect.left,
-            listY,
-            hShifterLayoutButtonRect.right,
-            listY + totalHeight
-        };
-
-        if (PtInRect(&dropdownRect, pt))
+        // Reset hover states (this should happen regardless of dropdown state)
+        int prevGearHover = hoveredGearLayoutIndex;
+        int prevHShifterHover = hoveredHShifterLayoutIndex;
+        hoveredGearLayoutIndex = -1;
+        hoveredHShifterLayoutIndex = -1;
+        int prevProfileHover = hoveredProfileIndex; // Track previous hover state
+        hoveredProfileIndex = -1; // Reset hover state
+        // Check for gear layout dropdown hover
+        if (gearLayoutDropdownOpen)
         {
-            for (size_t i = 0; i < hShifterLayouts.size(); ++i)
+            int listItemHeight = 25;
+            int itemGap = 5;
+            int listY = gearLayoutButtonRect.top + settingsScrollOffset + 25;
+            int totalHeight = (listItemHeight + itemGap) * gearLayouts.size();
+
+            RECT dropdownRect = {
+                gearLayoutButtonRect.left,
+                listY,
+                gearLayoutButtonRect.right,
+                listY + totalHeight
+            };
+
+            if (PtInRect(&dropdownRect, pt))
             {
-                RECT itemRect = {
-                    dropdownRect.left,
-                    listY + (LONG)(i * (listItemHeight + itemGap)),
-                    dropdownRect.right,
-                    listY + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
-                };
-                if (PtInRect(&itemRect, pt))
+                for (size_t i = 0; i < gearLayouts.size(); ++i)
                 {
-                    hoveredHShifterLayoutIndex = (int)i;
-                    break;
+                    RECT itemRect = {
+                        dropdownRect.left,
+                        listY + (LONG)(i * (listItemHeight + itemGap)),
+                        dropdownRect.right,
+                        listY + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
+                    };
+                    if (PtInRect(&itemRect, pt))
+                    {
+                        hoveredGearLayoutIndex = (int)i;
+                        break;
+                    }
                 }
             }
         }
-    }
 
-    // Redraw if hover state changed
-    if (prevGearHover != hoveredGearLayoutIndex || prevHShifterHover != hoveredHShifterLayoutIndex)
-    {
-        InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-    }
+        // Check for h-shifter layout dropdown hover
+        if (hShifterLayoutDropdownOpen)
+        {
+            int listItemHeight = 25;
+            int itemGap = 5;
+            int listY = hShifterLayoutButtonRect.top + settingsScrollOffset + 25;
+            int totalHeight = (listItemHeight + itemGap) * hShifterLayouts.size();
+
+            RECT dropdownRect = {
+                hShifterLayoutButtonRect.left,
+                listY,
+                hShifterLayoutButtonRect.right,
+                listY + totalHeight
+            };
+
+            if (PtInRect(&dropdownRect, pt))
+            {
+                for (size_t i = 0; i < hShifterLayouts.size(); ++i)
+                {
+                    RECT itemRect = {
+                        dropdownRect.left,
+                        listY + (LONG)(i * (listItemHeight + itemGap)),
+                        dropdownRect.right,
+                        listY + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
+                    };
+                    if (PtInRect(&itemRect, pt))
+                    {
+                        hoveredHShifterLayoutIndex = (int)i;
+                        break;
+                    }
+                }
+            }
+        }
+        if (profileDropdownOpen)
+        {
+            int listItemHeight = 25;
+            int itemGap = 5;
+            int listY = profileButtonRect.top + settingsScrollOffset + 25;
+            int totalHeight = (listItemHeight + itemGap) * profileNames.size();
+
+            RECT dropdownRect = {
+                profileButtonRect.left,
+                listY,
+                profileButtonRect.right,
+                listY + totalHeight
+            };
+
+            if (PtInRect(&dropdownRect, pt))
+            {
+                for (size_t i = 0; i < profileNames.size(); ++i)
+                {
+                    RECT itemRect = {
+                        dropdownRect.left,
+                        listY + (LONG)(i * (listItemHeight + itemGap)),
+                        dropdownRect.right,
+                        listY + (LONG)(i * (listItemHeight + itemGap) + listItemHeight)
+                    };
+                    if (PtInRect(&itemRect, pt))
+                    {
+                        hoveredProfileIndex = (int)i;
+                        break;
+                    }
+                }
+            }
+        }
+        // Redraw if hover state changed
+        bool needRedraw = (prevGearHover != hoveredGearLayoutIndex) ||
+            (prevHShifterHover != hoveredHShifterLayoutIndex) ||
+            (prevProfileHover != hoveredProfileIndex); // Add this comparison
+
+        if (needRedraw) {
+            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+        }
 
         // ----- Knob Radius Slider -----
         if (draggingKnobSlider)
@@ -10699,7 +11995,7 @@ case WM_MOUSEMOVE:
             int width = accBrakeSensSliderRect.right - accBrakeSensSliderRect.left;
             float t = float(mouseX - accBrakeSensSliderRect.left) / float(width);
             t = max(0.0f, min(1.0f, t));
-            accBrakeSensitivity = 0.1f + t * 4.9f; // example: 0.1 – 5.0 range
+            accBrakeSensitivity = 0.1f + t * 19.9f; // 0.1 – 20.0 range
             InvalidateRect(hwnd, nullptr, FALSE);
         }
         if (draggingScrollSensSlider)
@@ -10717,6 +12013,31 @@ case WM_MOUSEMOVE:
             float t = float(mouseX - snapSpeedSliderRect.left) / float(width);
             t = max(0.0f, min(1.0f, t));
             snapSpeed = snapSpeedMin + t * (snapSpeedMax - snapSpeedMin);
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        if (draggingSmoothScrollSlider)
+        {
+            int width = smoothScrollSlider.right - smoothScrollSlider.left;
+            float t = float(mouseX - smoothScrollSlider.left) / float(width);
+            t = max(0.0f, min(1.0f, t));
+            smoothScrollSpeed = 1.0f + t * 19.0f; // 1.0-20.0 range
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        if (draggingBrakeResistanceSlider)
+        {
+            int width = brakeresistanceSlider.right - brakeresistanceSlider.left;
+            float t = float(mouseX - brakeresistanceSlider.left) / float(width);
+            t = max(0.0f, min(1.0f, t));
+            brakeresistanceFactor = t * 50.0f; // 0-50 range
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+
+        if (draggingAccelerationResistanceSlider)
+        {
+            int width = accelerationresistanceSlider.right - accelerationresistanceSlider.left;
+            float t = float(mouseX - accelerationresistanceSlider.left) / float(width);
+            t = max(0.0f, min(1.0f, t));
+            accelerationResistanceFactor = t * 50.0f; // 0-50 range
             InvalidateRect(hwnd, nullptr, FALSE);
         }
         if (controllerDraggingSensSlider)
@@ -10777,6 +12098,9 @@ case WM_MOUSEMOVE:
         draggingTransparencyFadeDelaySlider = false;
         draggingAxisSmoothingFactorSlider = false;
         draggingYBarAlphaSlider = false;  // Add this
+        draggingSmoothScrollSlider = false;
+        draggingBrakeResistanceSlider = false;
+        draggingAccelerationResistanceSlider = false;
 
         break;
     }
@@ -10821,7 +12145,7 @@ case WM_MOUSEMOVE:
         }
         UpdateKnobMovement(hwnd);
         UpdateAutoInjection();
-
+        UpdateSmoothScroll();
         if (knobDisabledByF9)
         {
             knobMovementEnabled = IsKnobToggleActive();
@@ -10927,9 +12251,25 @@ case WM_MOUSEMOVE:
         int currentDrawRailCount = 0;
         switch (layoutType)
         {
-        case 1: case 3: case 4: case 10: currentDrawRailCount = is16GearSet ? 5 : 4; break;
-        case 2: currentDrawRailCount = is16GearSet ? 4 : 3; break;
-        case 5: case 6: case 7: case 8: case 9: currentDrawRailCount = 3; break;
+        case 1: // Normal Layout
+        case 3: // Reverse Bottom Layout (First rail)
+        case 4: // Reverse Bottom Layout (Last rail)
+        case 10: // Reverse Top Last Layout
+            currentDrawRailCount = is16GearSet ? 5 : 4;
+            break;
+        case 2: // No Reverse Layout
+            currentDrawRailCount = is16GearSet ? 4 : 3;
+            break;
+        case 5: // 5-Gear Only Layout
+        case 6: // 5-Gear Reverse First Layout
+        case 7: // 4-Gear Reverse Top Layout
+        case 8: // 4-Gear Reverse Bottom Layout
+        case 9: // 4-Gear Reverse Mixed Layout
+            currentDrawRailCount = 3; // Always 3 rails for these layouts
+            break;
+        case 11: // PRNDL Layout
+            currentDrawRailCount = 1; // Only one rail for PRNDL
+            break;
         }
 
         // Calculate current clutch normalization
@@ -11269,9 +12609,25 @@ case WM_MOUSEMOVE:
                         int drawRailCount = 0;
                         switch (layoutType)
                         {
-                        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-                        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-                        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+                        case 1: // Normal Layout
+                        case 3: // Reverse Bottom Layout (First rail)
+                        case 4: // Reverse Bottom Layout (Last rail)
+                        case 10: // Reverse Top Last Layout
+                            drawRailCount = is16GearSet ? 5 : 4;
+                            break;
+                        case 2: // No Reverse Layout
+                            drawRailCount = is16GearSet ? 4 : 3;
+                            break;
+                        case 5: // 5-Gear Only Layout
+                        case 6: // 5-Gear Reverse First Layout
+                        case 7: // 4-Gear Reverse Top Layout
+                        case 8: // 4-Gear Reverse Bottom Layout
+                        case 9: // 4-Gear Reverse Mixed Layout
+                            drawRailCount = 3; // Always 3 rails for these layouts
+                            break;
+                        case 11: // PRNDL Layout
+                            drawRailCount = 1; // Only one rail for PRNDL
+                            break;
                         }
 
                         int fullWidth = railX[drawRailCount - 1].x - railX[0].x;
@@ -11317,9 +12673,25 @@ case WM_MOUSEMOVE:
                         int drawRailCount = 0;
                         switch (layoutType)
                         {
-                        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-                        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-                        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+                        case 1: // Normal Layout
+                        case 3: // Reverse Bottom Layout (First rail)
+                        case 4: // Reverse Bottom Layout (Last rail)
+                        case 10: // Reverse Top Last Layout
+                            drawRailCount = is16GearSet ? 5 : 4;
+                            break;
+                        case 2: // No Reverse Layout
+                            drawRailCount = is16GearSet ? 4 : 3;
+                            break;
+                        case 5: // 5-Gear Only Layout
+                        case 6: // 5-Gear Reverse First Layout
+                        case 7: // 4-Gear Reverse Top Layout
+                        case 8: // 4-Gear Reverse Bottom Layout
+                        case 9: // 4-Gear Reverse Mixed Layout
+                            drawRailCount = 3; // Always 3 rails for these layouts
+                            break;
+                        case 11: // PRNDL Layout
+                            drawRailCount = 1; // Only one rail for PRNDL
+                            break;
                         }
 
                         int barWidth = 8;
@@ -11362,9 +12734,25 @@ case WM_MOUSEMOVE:
                         int drawRailCount = 0;
                         switch (layoutType)
                         {
-                        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-                        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-                        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+                        case 1: // Normal Layout
+                        case 3: // Reverse Bottom Layout (First rail)
+                        case 4: // Reverse Bottom Layout (Last rail)
+                        case 10: // Reverse Top Last Layout
+                            drawRailCount = is16GearSet ? 5 : 4;
+                            break;
+                        case 2: // No Reverse Layout
+                            drawRailCount = is16GearSet ? 4 : 3;
+                            break;
+                        case 5: // 5-Gear Only Layout
+                        case 6: // 5-Gear Reverse First Layout
+                        case 7: // 4-Gear Reverse Top Layout
+                        case 8: // 4-Gear Reverse Bottom Layout
+                        case 9: // 4-Gear Reverse Mixed Layout
+                            drawRailCount = 3; // Always 3 rails for these layouts
+                            break;
+                        case 11: // PRNDL Layout
+                            drawRailCount = 1; // Only one rail for PRNDL
+                            break;
                         }
 
                         int barWidth = 8;
@@ -11433,9 +12821,25 @@ case WM_MOUSEMOVE:
                         int drawRailCount = 0;
                         switch (layoutType)
                         {
-                        case 1: case 3: case 4: case 10: drawRailCount = is16GearSet ? 5 : 4; break;
-                        case 2: drawRailCount = is16GearSet ? 4 : 3; break;
-                        case 5: case 6: case 7: case 8: case 9: drawRailCount = 3; break;
+                        case 1: // Normal Layout
+                        case 3: // Reverse Bottom Layout (First rail)
+                        case 4: // Reverse Bottom Layout (Last rail)
+                        case 10: // Reverse Top Last Layout
+                            drawRailCount = is16GearSet ? 5 : 4;
+                            break;
+                        case 2: // No Reverse Layout
+                            drawRailCount = is16GearSet ? 4 : 3;
+                            break;
+                        case 5: // 5-Gear Only Layout
+                        case 6: // 5-Gear Reverse First Layout
+                        case 7: // 4-Gear Reverse Top Layout
+                        case 8: // 4-Gear Reverse Bottom Layout
+                        case 9: // 4-Gear Reverse Mixed Layout
+                            drawRailCount = 3; // Always 3 rails for these layouts
+                            break;
+                        case 11: // PRNDL Layout
+                            drawRailCount = 1; // Only one rail for PRNDL
+                            break;
                         }
 
                         int barWidth = 8;
@@ -11483,26 +12887,9 @@ case WM_MOUSEMOVE:
         }
         else
         {
-            // WINDOWED MODE: Full redraw logic
-            if (xBarNeedsRedraw && showXBar && mouseSteeringEnabled)
-            {
-                // Only redraw the X-bar area for X-bar specific changes
-                RECT xBarRedrawRect = {
-                    railX[0].x - 100,
-                    bottomY + 20,
-                    railX[currentDrawRailCount - 1].x + 100,
-                    bottomY + 150
-                };
-                InvalidateRect(hwnd, &xBarRedrawRect, FALSE);
-            }
-
-            // Full redraw for all other visual changes
-            if (needsFullRedraw)
-            {
-                InvalidateRect(hwnd, nullptr, FALSE);
-            }
+            // WINDOWED MODE: ALWAYS FULL REDRAW
+            InvalidateRect(hwnd, nullptr, FALSE);
         }
-
         // Update all tracked states
         lastKnobFlash = knobFlash;
         lastGreyOutState = !knobMovementEnabled;
@@ -11672,10 +13059,13 @@ case WM_MOUSEMOVE:
         }
 
         // Redraw update button if available
-        if (updateAvailable)
+// Redraw update button if available (ONE-TIME REDRAW)
+        static bool lastUpdateAvailable = false;
+        if (updateAvailable && !lastUpdateAvailable)
         {
             InvalidateRect(hwnd, nullptr, FALSE);
         }
+        lastUpdateAvailable = updateAvailable;
 
         break;
     }
@@ -11771,6 +13161,10 @@ case WM_MOUSEMOVE:
 
         // Custom title bar area (excluding buttons)
         if (!isBorderless && pt.y < titleHeight && pt.x < g_MaxButtonRect.left)
+            return HTCAPTION;
+
+        // ADD THIS: Bottom drag area (bottom 30 pixels)
+        if (!isBorderless && pt.y >= rc.bottom - 30)
             return HTCAPTION;
 
         return HTCLIENT;
@@ -11926,6 +13320,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow)
 
     ShowWindow(hwndMain, nCmdShow);
     UpdateWindow(hwndMain);
+    InitializeProfiles();
 
     // 3️⃣ **Load saved config**
     LoadConfig();
