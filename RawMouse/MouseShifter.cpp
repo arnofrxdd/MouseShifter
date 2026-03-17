@@ -1,4 +1,4 @@
-﻿#include "AppGlobals.h"
+#include "AppGlobals.h"
 #include "Updater.h"
 void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 {
@@ -4089,75 +4089,6 @@ void DrawBorderless(HDC hdc, int width, int height)
         // Small horizontal center line
         int lineY = barY + barHeight / 2;
         Pen linePen(Color(255, 255, 255), 2);
-        graphics.DrawLine(&linePen, barX, lineY, barX + barWidth, lineY);
-    }
-}
-void DrawYBarOnly(HDC hdc, int width, int height)
-{
-    Gdiplus::Graphics graphics(hdc);
-    graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
-
-    // --- Draw vertical Y-axis indicator (throttle/brake) ---
-    if (showYBar && mouseSteeringEnabled)
-    {
-        float normalizedY = (float)(joyY - axisMin) / (float)(axisMax - axisMin);
-        normalizedY = max(0.0f, min(1.0f, normalizedY));
-
-        // Get rail count for positioning
-        int drawRailCount = 0;
-        switch (layoutType)
-        {
-        case 1: // Normal Layout
-        case 3: // Reverse Bottom Layout (First rail)
-        case 4: // Reverse Bottom Layout (Last rail)
-        case 10: // Reverse Top Last Layout
-            drawRailCount = is16GearSet ? 5 : 4;
-            break;
-        case 2: // No Reverse Layout
-            drawRailCount = is16GearSet ? 4 : 3;
-            break;
-        case 5: // 5-Gear Only Layout
-        case 6: // 5-Gear Reverse First Layout
-        case 7: // 4-Gear Reverse Top Layout
-        case 8: // 4-Gear Reverse Bottom Layout
-        case 9: // 4-Gear Reverse Mixed Layout
-            drawRailCount = 3; // Always 3 rails for these layouts
-            break;
-        case 11: // PRNDL Layout
-            drawRailCount = 1; // Only one rail for PRNDL
-            break;
-        }
-
-        int barWidth = 8;
-        int barHeight = bottomY - topY;
-        int lastRailX = railX[drawRailCount - 1].x;
-        int yBarOffset = 20;
-        int barY = centerY - barHeight / 2;
-        int xBarGap = 20;
-        int barX = max(lastRailX + 50, knobPos.x + knobRadius + xBarGap);
-
-        // Compute dynamic color from green → red based on Y
-        BYTE r = (BYTE)(normalizedY * 255);  // Increased to 255 for more vibrant colors
-        BYTE g = (BYTE)((1.0f - normalizedY) * 255);  // Increased to 255 for more vibrant colors
-        Gdiplus::Color dynamicColor(r, g, 50);
-
-        // Background (dynamic) - only change the background color
-        Gdiplus::SolidBrush barBg(dynamicColor);
-        Gdiplus::Pen barOutline(Gdiplus::Color(200, 200, 200), 2);  // Brighter outline for better contrast
-        Gdiplus::Rect barRect(barX, barY, barWidth, barHeight);
-        graphics.FillRectangle(&barBg, barRect);
-        graphics.DrawRectangle(&barOutline, barRect);
-
-        // Filled portion (darker version of background color for subtle contrast)
-        int filledHeight = (int)(barHeight * normalizedY);
-        int fillY = barY;
-        Gdiplus::SolidBrush barFill(Gdiplus::Color(max(0, r - 80), max(0, g - 80), 30));  // Darker version of dynamic color
-        Gdiplus::Rect fillRect(barX, fillY, barWidth, filledHeight);
-        graphics.FillRectangle(&barFill, fillRect);
-
-        // Small horizontal line in middle (brighter for better visibility)
-        int lineY = barY + barHeight / 2;
-        Gdiplus::Pen linePen(Gdiplus::Color(255, 255, 255), 2);
         graphics.DrawLine(&linePen, barX, lineY, barX + barWidth, lineY);
     }
 }
@@ -9974,3 +9905,4 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow)
 // ==== EXTRACTED MODULES (UNITY BUILD) ====
 #include "Updater.cpp"
 #include "Config.cpp"
+#include "Transparency.cpp"

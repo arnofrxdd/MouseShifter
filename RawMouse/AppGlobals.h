@@ -1,16 +1,13 @@
-﻿#pragma once
+#pragma once
 #include <windows.h>
 #include <d2d1.h>
+#include <map>
 #include <math.h>
-#include <fstream>
-#include <windows.h>
 #include <string>
 #include <tchar.h>
 #include <tlhelp32.h>  // Add this for process/module snapshot functions
 #pragma comment(lib, "kernel32.lib")        // Add this line
-
-#pragma comment(lib, "d2d1")
-#include <map>
+#include "Transparency.h"
 #include <string>
 #include <cmath>
 #include <windowsx.h>
@@ -46,7 +43,6 @@ std::string activeGear;
 bool lockedInGear = false;
 bool prevLButtonDown = false; // track previous left button state
 bool isBorderless = false;
-bool isTransparent = false;
 int knobMinX, knobMaxX, knobMinY, knobMaxY;
 WORD heldGearKey = 0;            // VK code of currently held key
 bool knobMovementEnabled = true; // default = enabled
@@ -1204,334 +1200,25 @@ std::string GetExeFolder()
 std::string configFile = GetExeFolder() + "\\config.ini";
 const char* configSection = "Config";
 
-struct ACCENT_POLICY
-{
-    int nAccentState;
-    int nFlags;
-    int nColor;
-    int nAnimationId;
-};
+extern int yBarAlpha;
+extern bool useYbarFixedTransparency;
+extern HWND g_yBarHwnd;
 
-struct WINDOWCOMPOSITIONATTRIBDATA
-{
-    int nAttribute;
-    PVOID pData;
-    SIZE_T ulDataSize;
-};
-
-enum ACCENT_STATE
-{
-    ACCENT_DISABLED = 0,
-    ACCENT_ENABLE_BLURBEHIND = 3,
-    ACCENT_ENABLE_ACRYLICBLURBEHIND = 4,
-};
-
-bool EnableWin11Blur(HWND hwnd, bool acrylic = false)
-{
-    ACCENT_POLICY policy = {};
-    policy.nAccentState = acrylic ? ACCENT_ENABLE_ACRYLICBLURBEHIND : ACCENT_ENABLE_BLURBEHIND;
-    policy.nFlags = 0;
-    policy.nColor = 0xCCFFFFFF;
-    policy.nAnimationId = 0;
-
-    WINDOWCOMPOSITIONATTRIBDATA data = {};
-    data.nAttribute = 19; // WCA_ACCENT_POLICY
-    data.pData = &policy;
-    data.ulDataSize = sizeof(policy);
-
-    typedef BOOL(WINAPI* pSetWindowCompositionAttribute)(HWND, WINDOWCOMPOSITIONATTRIBDATA*);
-    static pSetWindowCompositionAttribute SetWindowCompositionAttribute =
-        (pSetWindowCompositionAttribute)GetProcAddress(GetModuleHandle(L"user32.dll"), "SetWindowCompositionAttribute");
-
-    if (SetWindowCompositionAttribute)
-        return SetWindowCompositionAttribute(hwnd, &data);
-
-    return false;
-}
-#include <dwmapi.h>
-#pragma comment(lib, "dwmapi.lib")
-
-bool IsTransparencyEnabled()
-{
-    BOOL enabled = FALSE;
-    if (SUCCEEDED(DwmGetColorizationColor(nullptr, &enabled)))
-    {
-        // This returns TRUE if colorization is active, but better:
-    }
-
-    DWORD value = 0;
-    DWORD size = sizeof(DWORD);
-    if (RegGetValue(HKEY_CURRENT_USER,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-        L"EnableTransparency",
-        RRF_RT_REG_DWORD, nullptr, &value, &size) == ERROR_SUCCESS)
-    {
-        return value != 0;
-    }
-
-    return false; // assume disabled if registry query fails
-}
-void FadeLayeredWindow(HWND hwnd, BYTE startAlpha, BYTE endAlpha, int durationMs)
-{
-    const int steps = 20; // smoothness
-    const int delay = durationMs / steps;
-
-    for (int i = 0; i <= steps; ++i)
-    {
-        float t = i / (float)steps;
-        BYTE alpha = (BYTE)(startAlpha + t * (endAlpha - startAlpha));
-        SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), alpha, LWA_COLORKEY | LWA_ALPHA);
-        Sleep(delay); // simple blocking; for non-blocking, use a timer
-    }
-}
-// --- Transparency controls ---
-bool dynamicTransparencyEnabled = true; // toggle for dynamic transparency
-BYTE currentAlpha = 200;                // current alpha applied to window
-BYTE maxAlpha = 100;                    // fully opaque on activity (slider-controlled)
-BYTE minAlpha = 20;                     // idle transparency
-const float alphaDecay = 0.66f; // approximately the same fade speed at 15 FPS
-DWORD transparencyFadeDelay = 300; // milliseconds before transparency starts
-RECT transparencyFadeDelaySliderRect;
-bool draggingTransparencyFadeDelaySlider = false;
-bool assistButtonHeld = false;
-// Add with your other global variables
-// --- UI state for settings panel ---
-RECT dynamicTransparencyToggleRect;
-RECT transparencySliderRect;
-bool draggingTransparencySlider = false;
 RECT accBrakeSensSliderRect;
 RECT steeringSensSliderRect;
-RECT minTransparencySliderRect;    // slider rect for idle transparency
-bool draggingMinTransparencySlider = false; // dragging state
 RECT steeringDegreesSliderRect;
-bool draggingSteeringDegreesSlider = false; // for WM_MOUSEMOVE drag
+float maxSteeringDegrees = 900.0f;
+float fullWheelDegrees = 900.0f;
+bool assistButtonHeld = false;
+bool draggingSteeringDegreesSlider = false;
+bool draggingTransparencySlider = false;
 bool draggingYBarAlphaSlider = false;
-
-float maxSteeringDegrees = 900.0f; // user can set this in your UI
-float fullWheelDegrees = 900.0f;   // full rotation your virtual wheel represents
-// Add this with your other global variables
-int yBarAlpha = 180; // Fixed alpha for Y-bar (0-255)
-bool useYbarFixedTransparency = false; // Enable separate Y-bar window with fixed transparency
-RECT yBarFixedTransToggle;
-RECT yBarAlphaSlider;
-HWND g_yBarHwnd = nullptr;
+const float alphaDecay = 0.66f;
 // Add with other global variables
 extern HWND g_yBarHwnd;
 extern int yBarAlpha;
 
-// Add with other function declarations
-void CreateYBarWindow(HWND parentHwnd);
-void DestroyYBarWindow();
-void UpdateYBarWindowPosition(HWND parentHwnd);
-LRESULT CALLBACK YBarWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-void DrawYBarOnly(HDC hdc, int width, int height);
-void CreateYBarWindow(HWND parentHwnd)
-{
-    if (g_yBarHwnd) return;
-
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = YBarWindowProc;
-    wc.hInstance = GetModuleHandle(nullptr);
-    wc.lpszClassName = L"YBarWindow";
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    RegisterClass(&wc);
-
-    RECT parentRect;
-    GetWindowRect(parentHwnd, &parentRect);
-
-    g_yBarHwnd = CreateWindowEx(
-        WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        L"YBarWindow",
-        L"YBar",
-        WS_POPUP,
-        parentRect.left, parentRect.top,
-        parentRect.right - parentRect.left, parentRect.bottom - parentRect.top,
-        parentHwnd, nullptr, GetModuleHandle(nullptr), nullptr
-    );
-
-    SetLayeredWindowAttributes(g_yBarHwnd, RGB(0, 0, 0), yBarAlpha, LWA_COLORKEY | LWA_ALPHA);
-    ShowWindow(g_yBarHwnd, SW_SHOW);
-}
-
-void DestroyYBarWindow()
-{
-    if (g_yBarHwnd)
-    {
-        DestroyWindow(g_yBarHwnd);
-        g_yBarHwnd = nullptr;
-    }
-}
-
-void UpdateYBarWindowPosition(HWND parentHwnd)
-{
-    if (!g_yBarHwnd) return;
-
-    RECT parentRect;
-    GetWindowRect(parentHwnd, &parentRect);
-    SetWindowPos(g_yBarHwnd, nullptr,
-        parentRect.left, parentRect.top,
-        parentRect.right - parentRect.left, parentRect.bottom - parentRect.top,
-        SWP_NOZORDER | SWP_NOACTIVATE);
-}
-
-LRESULT CALLBACK YBarWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg)
-    {
-    case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-        RECT rc;
-        GetClientRect(hwnd, &rc);
-        int width = rc.right;
-        int height = rc.bottom;
-
-        // Double buffering for Y-bar window
-        HDC memDC = CreateCompatibleDC(hdc);
-        BITMAPINFO bmi = {};
-        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        bmi.bmiHeader.biWidth = width;
-        bmi.bmiHeader.biHeight = -height;
-        bmi.bmiHeader.biPlanes = 1;
-        bmi.bmiHeader.biBitCount = 32;
-        bmi.bmiHeader.biCompression = BI_RGB;
-
-        void* pBits = nullptr;
-        HBITMAP memBitmap = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &pBits, nullptr, 0);
-        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
-
-        // Clear to transparent
-        Gdiplus::Graphics graphics(memDC);
-        graphics.Clear(Gdiplus::Color(0, 0, 0, 0));
-
-        // Draw only Y-bar
-        DrawYBarOnly(memDC, width, height);
-
-        // Blit to screen
-        BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
-
-        // Cleanup
-        SelectObject(memDC, oldBitmap);
-        DeleteObject(memBitmap);
-        DeleteDC(memDC);
-
-        EndPaint(hwnd, &ps);
-        break;
-    }
-
-    case WM_ERASEBKGND:
-        return 1; // Prevent background erasure
-
-    case WM_DESTROY:
-        g_yBarHwnd = nullptr;
-        break;
-
-    default:
-        return DefWindowProc(hwnd, msg, wParam, lParam);
-    }
-    return 0;
-}
-void ToggleBorderless(HWND hwnd)
-{
-    isBorderless = !isBorderless;
-
-    LONG style = GetWindowLong(hwnd, GWL_STYLE);
-    LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-
-    if (isBorderless)
-    {
-        // Remove window borders
-        style &= ~(WS_OVERLAPPEDWINDOW);
-        SetWindowLong(hwnd, GWL_STYLE, style);
-
-        // Make window layered for transparency
-        exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT;
-        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
-
-        // Set topmost only when borderless
-        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-        // Disable blur/acrylic explicitly
-        ACCENT_POLICY policy = {};
-        policy.nAccentState = ACCENT_DISABLED;
-        WINDOWCOMPOSITIONATTRIBDATA data = {};
-        data.nAttribute = 19; // WCA_ACCENT_POLICY
-        data.pData = &policy;
-        data.ulDataSize = sizeof(policy);
-
-        typedef BOOL(WINAPI* pSetWindowCompositionAttribute)(HWND, WINDOWCOMPOSITIONATTRIBDATA*);
-        static pSetWindowCompositionAttribute SetWindowCompositionAttribute =
-            (pSetWindowCompositionAttribute)GetProcAddress(GetModuleHandle(L"user32.dll"), "SetWindowCompositionAttribute");
-
-        if (SetWindowCompositionAttribute)
-            SetWindowCompositionAttribute(hwnd, &data);
-
-        currentAlpha = maxAlpha; // use slider-controlled max alpha
-        SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), currentAlpha, LWA_COLORKEY | LWA_ALPHA);
-
-        isTransparent = true;
-
-        // Create Y-bar window with separate alpha
-        if (useYbarFixedTransparency)
-        {
-            CreateYBarWindow(hwnd);
-        }
-
-
-        // Hide cursor
-        ShowCursor(FALSE);
-
-        // Save and hide panels
-        prevShowInputPanel = showInputPanel;
-        prevShowTogglePanel = showTogglePanel;
-        prevShowSettingsPanel = showSettingsPanel;
-        prevShowKeybindPanel = showKeybindPanel;
-        showSettingsPanel = false;
-        showKeybindPanel = false;
-        showInputPanel = false;
-        showTogglePanel = false;
-        // Lock cursor inside window
-        ClipCursor(nullptr);
-    }
-    else
-    {
-        // Destroy Y-bar window
-        if (useYbarFixedTransparency)
-        {
-            DestroyYBarWindow();
-        }
-
-        // Restore standard window style
-        style &= ~WS_CAPTION;
-        style &= ~WS_THICKFRAME;
-        exStyle &= ~WS_EX_LAYERED;
-        SetWindowLong(hwnd, GWL_STYLE, style);
-        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
-
-        // Remove topmost when exiting borderless
-        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-        // Show cursor
-        ShowCursor(TRUE);
-        ClipCursor(nullptr);
-
-        // Restore panel visibility
-        showSettingsPanel = prevShowSettingsPanel;
-        showKeybindPanel = prevShowKeybindPanel;
-        showInputPanel = prevShowInputPanel;
-        showTogglePanel = prevShowTogglePanel;
-        // Apply blur in windowed mode
-        EnableWin11Blur(hwnd);
-    }
-
-    // Refresh window to apply style changes
-    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-}
+#include "Transparency.h"
 void SetGearKey(std::string gear)
 {
     if (gearInputMap.find(gear) == gearInputMap.end())
