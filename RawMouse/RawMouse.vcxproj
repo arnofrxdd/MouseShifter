@@ -152,12 +152,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AppGlobals.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="vjoyinterface.h" />
+    <ClInclude Include="Updater.h" />
+    <ClInclude Include="Config.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MouseShifter.cpp" />

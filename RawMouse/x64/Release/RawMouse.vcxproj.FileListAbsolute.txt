@@ -1,3 +1,5 @@
 C:\Users\bazzu\source\repos\RawMouse\RawMouse\x64\Release\RawMouse.vcxproj.CopyComplete
 E:\MouseShifter Final Github backup\MouseShifter\RawMouse\x64\Release\RawMouse.vcxproj.CopyComplete
 E:\MouseShifter Source\MouseShifter\RawMouse\x64\Release\RawMouse.vcxproj.CopyComplete
+E:\MouseShifter Source\MouseShifter AntiGravity\MouseShifter\RawMouse\x64\Release\RawMouse.vcxproj.CopyComplete
+E:\MouseShifter Source\MouseShifter Refactor\MouseShifter\RawMouse\x64\Release\RawMouse.vcxproj.CopyComplete
