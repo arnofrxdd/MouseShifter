@@ -188,6 +188,9 @@
     <ClInclude Include="vJoy\vjoyinterface.h" />
     <ClInclude Include="Core\Updater.h" />
     <ClInclude Include="Core\Config.h" />
+    <ClInclude Include="Core\Config_Save.cpp" />
+    <ClInclude Include="Core\Config_Load.cpp" />
+    <ClInclude Include="Core\Config_Profiles_Mgr.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MouseShifter.cpp" />
