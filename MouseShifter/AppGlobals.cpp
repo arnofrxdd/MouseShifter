@@ -498,6 +498,6 @@ int layoutType = 1; // Default to Normal Layout
 bool hShifterLayoutDropdownOpen = false;
 RECT hShifterLayoutButtonRect;
 int hoveredGearLayoutIndex = -1;
-#include "UI/LayoutComputations.cpp"
+#include "UI/Math/LayoutComputations.cpp"
 
 #include "Core/ConfigManager.cpp"

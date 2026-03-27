@@ -1,17 +1,17 @@
-﻿    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDOWN:
     {
-        #include "MouseEvents_LButtonDown.cpp"
+        #include "Windows/MouseEvents/MouseEvents_LButtonDown.cpp"
         break;
     }
 
     case WM_MOUSEMOVE:
     {
-        #include "MouseEvents_MouseMove.cpp"
+        #include "Windows/MouseEvents/MouseEvents_MouseMove.cpp"
         break;
     }
 
     case WM_LBUTTONUP:
     {
-        #include "MouseEvents_LButtonUp.cpp"
+        #include "Windows/MouseEvents/MouseEvents_LButtonUp.cpp"
         break;
     }
