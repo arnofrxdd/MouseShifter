@@ -1,4 +1,4 @@
-﻿// ---------------- Window Proc ----------------
+// ---------------- Window Proc ----------------
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg)
@@ -58,7 +58,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
     }
 
-#include "WindowProc_Input.cpp"
+#include "Handlers/WindowProc_Input.cpp"
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
         // Handle gear keybind
@@ -198,7 +198,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         break;
     }
-#include "WindowProc_MouseEvents.cpp"
+#include "Handlers/WindowProc_MouseEvents.cpp"
     case WM_CAPTURECHANGED:
     {
         // If capture was lost for any reason, stop all dragging
@@ -224,7 +224,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     case WM_TIMER:
     {
-#include "WindowProc_Timer.cpp"
+#include "Handlers/WindowProc_Timer.cpp"
         break;
     }
     case WM_SIZE: // <-- new case added here

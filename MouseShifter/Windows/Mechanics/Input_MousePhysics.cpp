@@ -1,4 +1,4 @@
-﻿                if (!useXInput)
+                if (!useXInput)
                 {
                     // --- Compute movement ---
                     int dx = raw->data.mouse.lLastX;
@@ -22,11 +22,11 @@
                     auto& activeMap = lowerGearPositions;
 
                     if (layoutType == 11) // PRNDL layout
-        #include "Windows/Input/Input_Mouse_PRNDL.cpp"
+        #include "Windows/Mechanics/Input_Mouse_PRNDL.cpp"
                     else
                     {
                         // --- Check diamond intersection ---
-        #include "Windows/Input/Input_Mouse_HShifter.cpp"
+        #include "Windows/Mechanics/Input_Mouse_HShifter.cpp"
                     }
                     // --- Clamp to window bounds ---
                     if (knobPos.x < knobMinX)

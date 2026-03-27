@@ -1,0 +1,5 @@
+#include "Windows/Mechanics/Input_Prefix.cpp"
+#include "Windows/Mechanics/Input_Keyboard.cpp"
+#include "Windows/Mechanics/Input_MouseCore.cpp"
+#include "Windows/Mechanics/Input_MouseBinds.cpp"
+#include "Windows/Mechanics/Input_MousePhysics.cpp"
