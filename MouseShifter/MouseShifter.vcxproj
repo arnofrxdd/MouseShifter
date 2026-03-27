@@ -157,6 +157,11 @@
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
     <ClInclude Include="Resources\Resource.h" />
+    <ClInclude Include="Input\Submodules\XInput_Rumble.cpp" />
+    <ClInclude Include="Input\Submodules\XInput_Knob_Prefix.cpp" />
+    <ClInclude Include="Input\Submodules\XInput_Knob_Physics.cpp" />
+    <ClInclude Include="Input\Submodules\XInput_Knob_Transparency.cpp" />
+    <ClInclude Include="Input\Submodules\XInput_vJoy.cpp" />
     <ClInclude Include="Windows\MouseEvents\LButtonDown_Dropdowns.cpp" />
     <ClInclude Include="Windows\MouseEvents\LButtonDown_Profiles.cpp" />
     <ClInclude Include="Windows\MouseEvents\LButtonDown_Panels.cpp" />
