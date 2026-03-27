@@ -157,6 +157,16 @@
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
     <ClInclude Include="Resources\Resource.h" />
+    <ClInclude Include="Core\Config_INI.cpp" />
+    <ClInclude Include="Core\Config_Processes.cpp" />
+    <ClInclude Include="Core\Config_Injection.cpp" />
+    <ClInclude Include="Core\Config_UI.cpp" />
+    <ClInclude Include="UI\Settings\Settings_Game_Selector.cpp" />
+    <ClInclude Include="UI\Settings\Settings_Game_Injection.cpp" />
+    <ClInclude Include="UI\Settings\Settings_Game_MouseSteering.cpp" />
+    <ClInclude Include="UI\Settings\Settings_Game_TruckControl.cpp" />
+    <ClInclude Include="UI\Settings\Settings_Game_Clutch.cpp" />
+    <ClInclude Include="UI\Settings\Settings_Game_Controller.cpp" />
     <ClInclude Include="Input\Submodules\XInput_Rumble.cpp" />
     <ClInclude Include="Input\Submodules\XInput_Knob_Prefix.cpp" />
     <ClInclude Include="Input\Submodules\XInput_Knob_Physics.cpp" />
