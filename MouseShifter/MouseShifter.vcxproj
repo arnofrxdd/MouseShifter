@@ -157,6 +157,9 @@
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
     <ClInclude Include="Resources\Resource.h" />
+    <ClInclude Include="UI\Math\Layout_ComputeMain.cpp" />
+    <ClInclude Include="UI\Math\Layout_Intersections.cpp" />
+    <ClInclude Include="UI\Math\Layout_Labels.cpp" />
     <ClInclude Include="Core\Config_INI.cpp" />
     <ClInclude Include="Core\Config_Processes.cpp" />
     <ClInclude Include="Core\Config_Injection.cpp" />
