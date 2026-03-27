@@ -1,4 +1,4 @@
-﻿#include "AppGlobals.h"
+#include "AppGlobals.h"
 // --- Enum callback: pick first valid gamepad ---
 BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance, VOID* pContext)
 {
@@ -425,7 +425,7 @@ bool assistButtonBeingSet = false;
 WORD newAssistButton = 0;
 
 
-#include "Updater.h"
+#include "Core/Updater.h"
 
 
 
@@ -468,10 +468,10 @@ std::vector<std::wstring> replacementLines = {
     L"mix camud `-mouse.rel_position.y?0 * sel(c_minvert, -c_msens, c_msens) * mouse.button_right?0`" };
 
 // Backup & edit function
-#include "FileBackup.cpp"
+#include "Core/FileBackup.cpp"
 
-#include "VJoySetup.cpp"
-#include "MouseInput.cpp"
+#include "Input/VJoySetup.cpp"
+#include "Input/MouseInput.cpp"
 bool noReverseLayout = false;
 // Layout types - use one of these
 // Define gear layout types
@@ -498,6 +498,6 @@ int layoutType = 1; // Default to Normal Layout
 bool hShifterLayoutDropdownOpen = false;
 RECT hShifterLayoutButtonRect;
 int hoveredGearLayoutIndex = -1;
-#include "LayoutComputations.cpp"
+#include "UI/LayoutComputations.cpp"
 
-#include "ConfigManager.cpp"
+#include "Core/ConfigManager.cpp"

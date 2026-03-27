@@ -159,8 +159,8 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="vjoyinterface.h" />
-    <ClInclude Include="Updater.h" />
-    <ClInclude Include="Config.h" />
+    <ClInclude Include="Core\Updater.h" />
+    <ClInclude Include="Core\Config.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MouseShifter.cpp" />

@@ -1,4 +1,4 @@
-﻿bool InitVJoy()
+bool InitVJoy()
 {
     if (!vJoyEnabled())
     {
@@ -194,7 +194,7 @@ const float alphaDecay = 0.66f;
 extern HWND g_yBarHwnd;
 extern int yBarAlpha;
 
-#include "Transparency.h"
+#include "UI/Transparency.h"
 void SetGearKey(std::string gear)
 {
     if (gearInputMap.find(gear) == gearInputMap.end())

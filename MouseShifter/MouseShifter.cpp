@@ -1,18 +1,18 @@
-﻿#include "AppGlobals.h"
-#include "Updater.h"
-#include "ShifterUI.cpp"
+#include "AppGlobals.h"
+#include "Core/Updater.h"
+#include "UI/ShifterUI.cpp"
 // Add these global tracking variables for rails
 static float lastClutchNorm = 0.0f;
 static int lastRedrawRailCount = 0;
 static DWORD lastRailRedrawTime = 0;
-#include "Graphics.cpp"
+#include "UI/Graphics.cpp"
 
 
 // --- REVERSE LOCK FIX ---
 
 // Helper to check unlock state (since original function might be inaccessible)
-#include "InputProcessing.cpp"
-#include "WindowProc.cpp"
+#include "Input/InputProcessing.cpp"
+#include "Windows/WindowProc.cpp"
 }
 
 // ---------------- Main ----------------
@@ -114,6 +114,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow)
 }
 
 // ==== EXTRACTED MODULES (UNITY BUILD) ====
-#include "Updater.cpp"
-#include "Config.cpp"
-#include "Transparency.cpp"
+#include "Core/Updater.cpp"
+#include "Core/Config.cpp"
+#include "UI/Transparency.cpp"

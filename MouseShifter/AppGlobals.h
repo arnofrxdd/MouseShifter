@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <windows.h>
 #include <d2d1.h>
 #include <map>
@@ -7,7 +7,7 @@
 #include <tchar.h>
 #include <tlhelp32.h>  // Add this for process/module snapshot functions
 #pragma comment(lib, "kernel32.lib")        // Add this line
-#include "Transparency.h"
+#include "UI/Transparency.h"
 #include <string>
 #include <cmath>
 #include <windowsx.h>
