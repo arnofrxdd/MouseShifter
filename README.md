@@ -76,7 +76,7 @@
 | **OS** | Windows 10 / 11 (64-bit) |
 | **Build Toolchain** | Visual Studio 2019 or later (MSVC v142+) |
 | **Runtime** | Visual C++ Redistributable 2019 |
-| **vJoy** | vJoy 2.x driver (optional, for virtual joystick output) |
+| **vJoy** | vJoy 2.x driver (required for virtual joystick output) |
 | **SDL2** | Bundled in `SDL2 LIBS/` (no separate install needed) |
 | **DirectX** | Direct2D, GDI+, DirectInput8 (all standard Windows SDK) |
 | **XInput** | Windows SDK XInput (standard) |
@@ -88,7 +88,7 @@
 ### Pre-built Release
 1. Download the latest release `.zip` from the [Releases](../../releases) page.
 2. Extract to any folder.
-3. (Optional) Install the **vJoy** driver if you want virtual joystick button output.
+3. Install the **vJoy** driver for virtual joystick button output.
 4. Run `MouseShifter.exe`.
 
 ### Build from Source
