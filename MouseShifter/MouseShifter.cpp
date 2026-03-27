@@ -5,13 +5,19 @@
 static float lastClutchNorm = 0.0f;
 static int lastRedrawRailCount = 0;
 static DWORD lastRailRedrawTime = 0;
-#include "UI/Graphics.cpp"
+#include "UI/Graphics_StaticElements.cpp"
+#include "UI/Graphics_DrawBorderless.cpp"
+#include "UI/Graphics_ScreenCapture.cpp"
+#include "UI/Graphics_RedrawMath.cpp"
 
 
 // --- REVERSE LOCK FIX ---
 
 // Helper to check unlock state (since original function might be inaccessible)
-#include "Input/InputProcessing.cpp"
+#include "Input/Input_ReverseLock.cpp"
+#include "Input/Input_RawMouse.cpp"
+#include "Input/Input_XInputEngine.cpp"
+#include "Input/Input_Pedals.cpp"
 #include "Windows/WindowProc.cpp"
 }
 

@@ -9,7 +9,42 @@ To bypass this without rewriting thousands of variables, we extract large blocks
 
 ---
 
+# 🚨 MOUSE SHIFTER AI PRIME DIRECTIVE 🚨
+
+**ATTENTION ALL FUTURE AI AGENTS:** 
+By reading this file, you are bound by the active architecture rules of the `MouseShifter` repository. Failure to comply will result in build corruption.
+
+## 1. THE ARCHITECTURE: "UNITY BUILD INJECTION"
+This project does **NOT** use traditional C++ header/source separation for its modules. 
+It uses **Include-Based Extraction (Unity Build)**.
+
+- **DO NOT** attempt to create `.h` files for newly extracted modules.
+- **DO NOT** attempt to write `extern` for global variables to share state.
+- **DO NOT** add standard `#pragma once` or independent `#include <windows.h>` headers to sub-modules.
+
+All files in `UI/`, `Input/`, and `Windows/` are built to be physically injected directly into the master `MouseShifter.cpp` hub (or its immediate children) via `#include "Module.cpp"`.
+Because they compile as a single translation unit, they automatically share all `static` variables and `AppGlobals.h` references.
+
+***Example of the Router Architecture:***
+```cpp
+// Inside MouseShifter.cpp
+#include "UI/Graphics_StaticElements.cpp"
+#include "Input/Input_Pedals.cpp"
+```
+
+## 2. THE BUSINESS LOGIC FREEZE
+- **DO NOT** attempt to "optimize" or "rewrite" mathematical business logic while doing structural refactoring.
+- The physics engine (`Input_*.cpp`), Reverse Lock logic, and slider math (`MouseEvents_*.cpp`) are highly tuned natively.
+- You are authorized to *move* code. You are **strictly forbidden** from *changing* what the code does without explicit user permission.
+
+---
+
 ## Step-by-Step Instruction Guide for AI Models
+
+### 🚨 AI PRIME DIRECTIVE: NO LOGIC DELETION OR HALLUCINATION 🚨
+**Under NO circumstances should an AI model analyze this codebase and decide to "delete", "optimize", or "rewrite" existing business logic, loops, or variables.** 
+Your ONLY job is pure structural refactoring. You are physically moving 1:1 identical chunks of raw code out of a massive text file into a secondary `.cpp` file and replacing the chunk with an `#include`. 
+**Do NOT hallucinate changes. Do NOT rewrite function signatures. Do NOT delete what you assume is dead code.** You must treat the exact text as a fragile monolith. Failure to adhere to this strictly will brutally break the interconnected `MouseShifter` state machine.
 
 AI Models should execute the following strict looping sequence for *every single refactor step*. **Do NOT skip any of these steps.**
 
