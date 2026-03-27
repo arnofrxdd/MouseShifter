@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{ecbbb4d7-be5f-4bb4-bb16-3cb192e6a906}</ProjectGuid>
-    <RootNamespace>RawMouse</RootNamespace>
+    <RootNamespace>MouseShifter</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>MouseShifter</ProjectName>
   </PropertyGroup>
