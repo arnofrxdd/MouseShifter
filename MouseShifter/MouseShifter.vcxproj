@@ -157,6 +157,13 @@
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
     <ClInclude Include="Resources\Resource.h" />
+    <ClInclude Include="Core\Globals\Globals_ConfigInput.h" />
+    <ClInclude Include="Core\Globals\Globals_UI.h" />
+    <ClInclude Include="Core\Globals\Globals_Devices.h" />
+    <ClInclude Include="Core\Globals\Globals_Logic_DirectInput.cpp" />
+    <ClInclude Include="Core\Globals\Globals_Logic_ReverseLock.cpp" />
+    <ClInclude Include="Core\Globals\Globals_Logic_Toggles.cpp" />
+    <ClInclude Include="Core\Globals\Globals_Logic_Misc.cpp" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="vJoy\vjoyinterface.h" />
     <ClInclude Include="Core\Updater.h" />
