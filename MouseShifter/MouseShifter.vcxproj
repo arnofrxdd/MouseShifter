@@ -95,7 +95,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\bazzu\source\repos\RawMouse\RawMouse;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\bazzu\source\repos\RawMouse\RawMouse;%(AdditionalLibraryDirectories);$(ProjectDir)vJoy</AdditionalLibraryDirectories>
       <AdditionalDependencies>gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -140,14 +140,14 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(ProjectDir)SDL2 LIBS\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)SDL2 LIBS\include;%(AdditionalIncludeDirectories);$(ProjectDir)vJoy;$(ProjectDir)Resources</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)SDL2 LIBS\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)SDL2 LIBS\lib\x64;%(AdditionalLibraryDirectories);$(ProjectDir)vJoy</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -156,9 +156,9 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
-    <ClInclude Include="Resource.h" />
+    <ClInclude Include="Resources\Resource.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="vjoyinterface.h" />
+    <ClInclude Include="vJoy\vjoyinterface.h" />
     <ClInclude Include="Core\Updater.h" />
     <ClInclude Include="Core\Config.h" />
   </ItemGroup>
@@ -166,7 +166,7 @@
     <ClCompile Include="MouseShifter.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="MouseShifter.rc" />
+    <ResourceCompile Include="Resources\MouseShifter.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="MouseShifter.ico" />

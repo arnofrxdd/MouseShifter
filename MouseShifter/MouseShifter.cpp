@@ -14,10 +14,10 @@ static DWORD lastRailRedrawTime = 0;
 // --- REVERSE LOCK FIX ---
 
 // Helper to check unlock state (since original function might be inaccessible)
-#include "Input/Input_ReverseLock.cpp"
-#include "Input/Input_RawMouse.cpp"
-#include "Input/Input_XInputEngine.cpp"
-#include "Input/Input_Pedals.cpp"
+#include "Input/Submodules/Input_ReverseLock.cpp"
+#include "Input/Submodules/Input_RawMouse.cpp"
+#include "Input/Submodules/Input_XInputEngine.cpp"
+#include "Input/Submodules/Input_Pedals.cpp"
 #include "Windows/WindowProc.cpp"
 }
 
