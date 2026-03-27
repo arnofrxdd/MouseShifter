@@ -119,3 +119,19 @@ Never extract a second chunk without verifying the first. Immediately trigger an
 ```
 
 Verify that `0 Error(s)` are reported. If there are errors, revert the PowerShell script changes. If successful, you may proceed to identify the next block for Step 1.
+
+---
+
+## Web-Based LLM Prompt Template (e.g. Gemini 1.5 Flash in Browser)
+If you are using a stateless LLM purely in a browser without IDE/PowerShell access, **the LLM will attempt to rewrite your entire file from scratch and insert `// ... rest of code ...`**. This will brutally destroy your Unity Build architecture when you copy/paste it into your IDE.
+
+Whenever you start a new conversation with a web UI agent (like Gemini Flash) to build a new feature or do a manual refactoring pass, **paste this exact prompt** at the beginning of your chat so it understands the architecture:
+
+> **System Instructions for this Project:**
+> 1. This project uses a strict C++ **Unity Build** (Include-Based) architecture. All `.cpp` fragment files are injected via `#include "fragment.cpp"` into a single root translation unit (`MouseShifter.cpp`). 
+> 2. **DO NOT** give me traditional header/source separation using `#pragma once` with `extern` definitions. 
+> 3. **DO NOT** include standard libraries (e.g. `#include <windows.h>`, `<map>`) inside the fragmented `.cpp` files. All standard library headers are strictly defined globally inside `Core/Globals/Globals_Prefix.h`.
+> 4. If I ask you to write a new feature, provide the code as a self-contained `.cpp` fragment suitable for injection.
+> 5. If I ask you to register global variables, tell me to add them to the appropriate `Globals_UI.h`, `Globals_Input.h`, or `Globals_Physics.h` chunk.
+> 6. When you output code for me to copy and paste, **NEVER** use placeholder abbreviation comments like `// ... existing code ...` or `// rest of function`. You must output the **exact, whole code block** I need to copy, or explicitly give me the precise Line Numbers to manually cut from my IDE.
+> 7. If we make a new file, I will add it to `<ClInclude>` (Headers) in Visual Studio, not `<ClCompile>`, to avoid `C2601` compilation overlaps. Keep this in mind.
