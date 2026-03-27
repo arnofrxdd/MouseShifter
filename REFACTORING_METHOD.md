@@ -37,6 +37,17 @@ Because they compile as a single translation unit, they automatically share all 
 - The physics engine (`Input_*.cpp`), Reverse Lock logic, and slider math (`MouseEvents_*.cpp`) are highly tuned natively.
 - You are authorized to *move* code. You are **strictly forbidden** from *changing* what the code does without explicit user permission.
 
+## 3. IDENTIFYING BRACKET LEAKS (`C2601` Errors)
+When extracting code via array slices, always match your `{ }` brackets. 
+If `MSBuild.exe` throws `error C2601: 'FunctionName': local function definitions are illegal`, it means a preceding module **failed to close a bracket**, causing the compiler to think the current file is still inside a parent function scope. Trace the brackets backward through the `#include` router.
+
+## 4. IDE COMPILER TRACKING (`.vcxproj`)
+When generating new modules (e.g., `Settings_Sliders.cpp`), you must inform Visual Studio of their existence so they appear in the Solution Explorer, but **they must not be compiled independently!**
+
+- **DO NOT** add new extracted fragments to the `<ClCompile>` tags in `.vcxproj`.
+- **DO** add them to the `<ClInclude>` (Headers) section instead. 
+- MSBuild will skip compiling them natively, but will perfectly inline them when the root `MouseShifter.cpp` is built.
+
 ---
 
 ## Step-by-Step Instruction Guide for AI Models
