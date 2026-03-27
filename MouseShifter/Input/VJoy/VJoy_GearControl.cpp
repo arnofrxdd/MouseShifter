@@ -1,4 +1,4 @@
-﻿#include "UI/Transparency.h"
+#include "UI/Handlers/Transparency.h"
 void SetGearKey(std::string gear)
 {
     if (gearInputMap.find(gear) == gearInputMap.end())

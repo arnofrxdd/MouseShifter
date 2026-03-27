@@ -1,4 +1,4 @@
-#include "AppGlobals.h"
+#include "Core/Globals/AppGlobals.h"
 #include "Transparency.h"
 
 // --- Definitions of transparency-related globals (Moved from AppGlobals.h) ---

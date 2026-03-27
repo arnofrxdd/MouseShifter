@@ -7,7 +7,7 @@
 #include <tchar.h>
 #include <tlhelp32.h>  // Add this for process/module snapshot functions
 #pragma comment(lib, "kernel32.lib")        // Add this line
-#include "UI/Transparency.h"
+#include "UI/Handlers/Transparency.h"
 #include <string>
 #include <cmath>
 #include <windowsx.h>

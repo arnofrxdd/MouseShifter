@@ -152,7 +152,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="AppGlobals.h" />
+    <ClInclude Include="Core\Globals\AppGlobals.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
@@ -164,10 +164,10 @@
     <ClInclude Include="UI\Math\Layout_ComputeMain.cpp" />
     <ClInclude Include="UI\Math\Layout_Intersections.cpp" />
     <ClInclude Include="UI\Math\Layout_Labels.cpp" />
-    <ClInclude Include="Core\Config_INI.cpp" />
-    <ClInclude Include="Core\Config_Processes.cpp" />
-    <ClInclude Include="Core\Config_Injection.cpp" />
-    <ClInclude Include="Core\Config_UI.cpp" />
+    <ClInclude Include="Core\Config\Config_INI.cpp" />
+    <ClInclude Include="Core\Config\Config_Processes.cpp" />
+    <ClInclude Include="Core\Config\Config_Injection.cpp" />
+    <ClInclude Include="Core\Config\Config_UI.cpp" />
     <ClInclude Include="UI\Settings\Settings_Game_Selector.cpp" />
     <ClInclude Include="UI\Settings\Settings_Game_Injection.cpp" />
     <ClInclude Include="UI\Settings\Settings_Game_MouseSteering.cpp" />
@@ -193,11 +193,11 @@
     <ClInclude Include="Core\Globals\Globals_Logic_Misc.cpp" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="vJoy\vjoyinterface.h" />
-    <ClInclude Include="Core\Updater.h" />
+    <ClInclude Include="Core\System\Updater.h" />
     <ClInclude Include="Core\Config.h" />
-    <ClInclude Include="Core\Config_Save.cpp" />
-    <ClInclude Include="Core\Config_Load.cpp" />
-    <ClInclude Include="Core\Config_Profiles_Mgr.cpp" />
+    <ClInclude Include="Core\Config\Config_Save.cpp" />
+    <ClInclude Include="Core\Config\Config_Load.cpp" />
+    <ClInclude Include="Core\Config\Config_Profiles_Mgr.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MouseShifter.cpp" />

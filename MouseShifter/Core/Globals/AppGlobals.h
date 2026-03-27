@@ -4,4 +4,4 @@
 #include "Core/Globals/Globals_UI.h"
 #include "Core/Globals/Globals_Devices.h"
 
-#include "AppGlobals.cpp"
+#include "Core/Globals/AppGlobals.cpp"

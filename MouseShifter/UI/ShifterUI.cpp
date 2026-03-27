@@ -1,4 +1,4 @@
-﻿void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
+void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 {
     RECT rc;
     GetClientRect(hwnd, &rc);
@@ -51,10 +51,10 @@
         graphics.Clear(Gdiplus::Color(255, 8, 8, 8)); // fully opaque fallback
     }
 
-#include "ShifterUI_Drawing.cpp"
-#include "ShifterUI_SidePanels.cpp"
-#include "ShifterUI_Settings.cpp"
-#include "ShifterUI_Overlays.cpp"
+#include "Handlers/ShifterUI_Drawing.cpp"
+#include "Handlers/ShifterUI_SidePanels.cpp"
+#include "Handlers/ShifterUI_Settings.cpp"
+#include "Handlers/ShifterUI_Overlays.cpp"
     BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
 
     // --- Cleanup ---

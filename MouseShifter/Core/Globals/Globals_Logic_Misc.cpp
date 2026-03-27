@@ -40,7 +40,7 @@ std::vector<std::wstring> replacementLines = {
     L"mix camud `-mouse.rel_position.y?0 * sel(c_minvert, -c_msens, c_msens) * mouse.button_right?0`" };
 
 // Backup & edit function
-#include "Core/FileBackup.cpp"
+#include "Core/System/FileBackup.cpp"
 
 #include "Input/VJoySetup.cpp"
 #include "Input/MouseInput.cpp"
