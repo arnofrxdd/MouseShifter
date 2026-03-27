@@ -157,6 +157,8 @@
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
     <ClInclude Include="Resources\Resource.h" />
+    <ClInclude Include="Windows\Input\Input_Mouse_PRNDL.cpp" />
+    <ClInclude Include="Windows\Input\Input_Mouse_HShifter.cpp" />
     <ClInclude Include="Windows\Timer\Timer_Redraw_Knob.cpp" />
     <ClInclude Include="Windows\Timer\Timer_Redraw_Bars.cpp" />
     <ClInclude Include="UI\Math\Layout_ComputeMain.cpp" />
