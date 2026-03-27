@@ -163,6 +163,7 @@ Custom layouts can be defined in **`gearlayouts.ini`** and selected from the in-
 - PlayStation button layout mode toggle included.
 
 ### DirectInput Pedals
+> ⚠️ **Currently not working.** DirectInput pedal support is present in the codebase but is non-functional at this time.
 - Detected via DirectInput8 (`IDirectInput8`, `IDirectInputDevice8`).
 - Clutch (Z), Brake (Y), and Accelerator (Rz) axes readable.
 - Any axis can be bound as the knob toggle or reverse-unlock trigger.
