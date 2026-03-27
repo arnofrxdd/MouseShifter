@@ -157,6 +157,11 @@
     <ClInclude Include="public.h" />
     <ClInclude Include="MouseShifter.h" />
     <ClInclude Include="Resources\Resource.h" />
+    <ClInclude Include="Windows\MouseEvents\LButtonDown_Dropdowns.cpp" />
+    <ClInclude Include="Windows\MouseEvents\LButtonDown_Profiles.cpp" />
+    <ClInclude Include="Windows\MouseEvents\LButtonDown_Panels.cpp" />
+    <ClInclude Include="Windows\MouseEvents\LButtonDown_Settings.cpp" />
+    <ClInclude Include="Windows\MouseEvents\LButtonDown_Devices.cpp" />
     <ClInclude Include="Core\Globals\Globals_ConfigInput.h" />
     <ClInclude Include="Core\Globals\Globals_UI.h" />
     <ClInclude Include="Core\Globals\Globals_Devices.h" />
