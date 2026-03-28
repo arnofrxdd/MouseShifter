@@ -1,0 +1,6 @@
+﻿#include "UI/Settings/Settings_Game_Selector.cpp"
+#include "UI/Settings/Settings_Game_Injection.cpp"
+#include "UI/Settings/Settings_Game_MouseSteering.cpp"
+#include "UI/Settings/Settings_Game_TruckControl.cpp"
+#include "UI/Settings/Settings_Game_Clutch.cpp"
+#include "UI/Settings/Settings_Game_Controller.cpp"

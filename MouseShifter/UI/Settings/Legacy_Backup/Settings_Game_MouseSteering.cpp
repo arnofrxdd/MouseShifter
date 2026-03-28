@@ -1,0 +1,1 @@
+// This fragment is now handled by g_settingsRegistry in Settings_VariablesAndTitles.cpp

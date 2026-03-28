@@ -1,4 +1,7 @@
-﻿        ReleaseCapture();
+        ReleaseCapture();
+        g_draggingElement = nullptr;
+
+        // Legacy dragging flags (can be removed later once fully verified)
         draggingKnobSlider = false;
         draggingSensSlider = false;
         draggingDiagSlider = false;
@@ -15,8 +18,7 @@
         draggingSteeringDegreesSlider = false;
         draggingTransparencyFadeDelaySlider = false;
         draggingAxisSmoothingFactorSlider = false;
-        draggingYBarAlphaSlider = false;  // Add this
+        draggingYBarAlphaSlider = false; 
         draggingSmoothScrollSlider = false;
         draggingBrakeResistanceSlider = false;
         draggingAccelerationResistanceSlider = false;
-

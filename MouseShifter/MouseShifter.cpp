@@ -1,5 +1,6 @@
 #include "Core/Globals/AppGlobals.h"
 #include "Core/System/Updater.h"
+#include "UI/Settings/Settings_Registry.cpp"
 #include "UI/ShifterUI.cpp"
 // Add these global tracking variables for rails
 static float lastClutchNorm = 0.0f;

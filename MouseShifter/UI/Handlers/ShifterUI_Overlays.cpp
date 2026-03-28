@@ -1,4 +1,4 @@
-﻿    if (showVJoyPicker && vJoyButtonCount > 0)
+    if (showVJoyPicker && vJoyButtonCount > 0)
     {
         int panelWidth = 300;  // wider window
         int panelPadding = 20; // padding around buttons

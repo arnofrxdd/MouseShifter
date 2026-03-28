@@ -1,70 +1,9 @@
-﻿        if (showSettingsPanel)
+        if (showSettingsPanel)
         {
-            RECT r; // temporary rect for PtInRect
-
-            r = GetScrolledRect(knobSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingKnobSlider = true;
-                SetCapture(hwnd);
-            }
-
-            r = GetScrolledRect(gearSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                isDraggingGearRadius = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(sensSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingSensSlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(diagSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingDiagSlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(snapInSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingSnapInSlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(noReverseToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                noReverseLayout = !noReverseLayout;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-                ComputeLayout(hwnd);
-                ComputeIntersections();
-            }
-            r = GetScrolledRect(hideHighGearsToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                hideHighGears = !hideHighGears;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-
-                ComputeLayout(hwnd); // if needed
-            }
-            r = GetScrolledRect(useScrollClutchToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                useScrollClutch = !useScrollClutch;           // toggle the flag
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-
-            r = GetScrolledRect(reverseLockToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                reverseLockEnabled = !reverseLockEnabled;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            // DLL INJECTION CLICK 
-
-            // --- DLL Injection Controls ---
+            // --- Complex Custom Controls First (Dropdowns, specialized buttons) ---
+            // These take priority over the generic registry elements
+            
+            // DLL Injection Controls
             r = GetScrolledRect(processComboRect);
             if (PtInRect(&r, pt))
             {
@@ -75,6 +14,7 @@
                     g_selectedProcessId = g_processList[currentIndex];
                 }
                 InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                return 0;
             }
 
             r = GetScrolledRect(refreshButtonRect);
@@ -82,265 +22,135 @@
             {
                 RefreshProcessList();
                 InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                return 0;
             }
 
-            r = GetScrolledRect(autoInjectButtonRect);
-            if (PtInRect(&r, pt))
-            {
-                g_autoInjectEnabled = !g_autoInjectEnabled;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            // Toggle Mouse Block checkbox
             r = GetScrolledRect(mouseBlockCheckboxRect);
-            if (PtInRect(&r, pt))
-            {
+            if (PtInRect(&r, pt)) {
                 g_mouseBlockEnabled = !g_mouseBlockEnabled;
                 InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                return 0;
             }
 
-            // Toggle XInput Block checkbox
             r = GetScrolledRect(xinputBlockCheckboxRect);
-            if (PtInRect(&r, pt))
-            {
+            if (PtInRect(&r, pt)) {
                 g_xinputBlockEnabled = !g_xinputBlockEnabled;
                 InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            r = GetScrolledRect(smoothScrollSlider);
-            if (PtInRect(&r, pt))
-            {
-                draggingSmoothScrollSlider = true;
-                SetCapture(hwnd);
+                return 0;
             }
 
-            r = GetScrolledRect(brakeresistanceSlider);
+            // Dropdown Buttons
+            r = GetScrolledRect(gearLayoutButtonRect);
+            if (PtInRect(&r, pt)) { gearLayoutDropdownOpen = !gearLayoutDropdownOpen; hShifterLayoutDropdownOpen = false; profileDropdownOpen = false; InvalidateRect(hwnd, &settingsPanelRect, FALSE); return 0; }
+
+            r = GetScrolledRect(hShifterLayoutButtonRect);
+            if (PtInRect(&r, pt)) { hShifterLayoutDropdownOpen = !hShifterLayoutDropdownOpen; gearLayoutDropdownOpen = false; profileDropdownOpen = false; InvalidateRect(hwnd, &settingsPanelRect, FALSE); return 0; }
+
+            r = GetScrolledRect(profileButtonRect);
+            if (PtInRect(&r, pt)) { profileDropdownOpen = !profileDropdownOpen; gearLayoutDropdownOpen = false; hShifterLayoutDropdownOpen = false; InvalidateRect(hwnd, &settingsPanelRect, FALSE); return 0; }
+
+            r = GetScrolledRect(createProfileButtonRect);
             if (PtInRect(&r, pt))
             {
-                draggingBrakeResistanceSlider = true;
-                SetCapture(hwnd);
+                 creatingNewProfile = true;
+                 newProfileName = "New Profile";
+                 profileTextSelected = true;
+                 profileTextSelectionStart = 0;
+                 profileTextSelectionEnd = newProfileName.length();
+                 InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                 return 0;
             }
 
-            r = GetScrolledRect(accelerationresistanceSlider);
-            if (PtInRect(&r, pt))
+            // --- Registry-based Hit Testing ---
+            std::wstring section = L"";
+            for (auto& element : g_settingsRegistry)
             {
-                draggingAccelerationResistanceSlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(snapSpeedSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingSnapSpeedSlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(layoutScaleSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingLayoutSlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(useAxisSmoothingToggle);
-            if (PtInRect(&r, pt))
-            {
-                useAxisSmoothing = !useAxisSmoothing;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            // Add this with your other slider dragging handlers:
-            r = GetScrolledRect(axisSmoothingFactorSlider);
-            if (PtInRect(&r, pt))
-            {
-                draggingAxisSmoothingFactorSlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(neutralToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                bool wasEnabled = isNeutralEnabled;
-                isNeutralEnabled = !isNeutralEnabled;
+                if (element.type == SettingType::HEADING) section = element.label;
 
-                // If Neutral was just disabled, release the Neutral key
-                if (wasEnabled && !isNeutralEnabled && neutralHeld)
+                r = GetScrolledRect(element.rect);
+                if (PtInRect(&r, pt))
                 {
-                    GearInput gi = gearInputMap["N"];
-                    if (gi.type == KEYBOARD)
+                    if (element.type == SettingType::HEADING)
                     {
-                        INPUT input = {};
-                        input.type = INPUT_KEYBOARD;
-                        input.ki.wVk = gi.code;
-                        input.ki.dwFlags = KEYEVENTF_KEYUP;
-                        SendInput(1, &input, sizeof(INPUT));
-                    }
-                    else if (gi.type == MOUSE)
-                    {
-                        INPUT input = {};
-                        input.type = INPUT_MOUSE;
-                        input.mi.dwFlags = (gi.code == RI_MOUSE_LEFT_BUTTON_DOWN ? MOUSEEVENTF_LEFTUP : gi.code == RI_MOUSE_RIGHT_BUTTON_DOWN ? MOUSEEVENTF_RIGHTUP
-                            : MOUSEEVENTF_MIDDLEUP);
-                        SendInput(1, &input, sizeof(INPUT));
-                    }
-                    else if (gi.type == VJOY_BUTTON)
-                    {
-                        SetBtn(false, vjoyDeviceId, gi.code);
+                        g_collapsedSections[element.label] = !g_collapsedSections[element.label];
+                        InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                        return 0;
                     }
 
-                    // Stop Neutral glow animation
-                    if (keybindAnimations.find("N") != keybindAnimations.end()) {
-                        keybindAnimations["N"].isHeld = false;
-                        keybindAnimations["N"].isActive = false;
-                        keybindAnimations["N"].activationTime = GetTickCount();
-                    }
+                    if (!section.empty() && g_collapsedSections[section]) continue;
 
-                    neutralHeld = false;
+                    if (element.type == SettingType::TOGGLE)
+                    {
+                        bool* val = (bool*)element.valuePtr;
+                        *val = !(*val);
+
+                        // Specialized toggle logic
+                        if (element.label == L"Precision Knob Move") {
+                            // original logic used inverted bool visually
+                        }
+                        if (element.label == L"Enable Neutral") {
+                             if (!isNeutralEnabled && neutralHeld) {
+                                GearInput gi = gearInputMap["N"];
+                                if (gi.type == KEYBOARD) {
+                                    INPUT input = {}; input.type = INPUT_KEYBOARD; input.ki.wVk = gi.code; input.ki.dwFlags = KEYEVENTF_KEYUP;
+                                    SendInput(1, &input, sizeof(INPUT));
+                                } else if (gi.type == MOUSE) {
+                                    INPUT input = {}; input.type = INPUT_MOUSE; 
+                                    input.mi.dwFlags = (gi.code == RI_MOUSE_LEFT_BUTTON_DOWN ? MOUSEEVENTF_LEFTUP : gi.code == RI_MOUSE_RIGHT_BUTTON_DOWN ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_MIDDLEUP);
+                                    SendInput(1, &input, sizeof(INPUT));
+                                } else if (gi.type == VJOY_BUTTON) {
+                                    SetBtn(false, (UINT)vjoyDeviceId, gi.code);
+                                }
+                                if (keybindAnimations.find("N") != keybindAnimations.end()) {
+                                    keybindAnimations["N"].isHeld = false; keybindAnimations["N"].isActive = false; keybindAnimations["N"].activationTime = GetTickCount();
+                                }
+                                neutralHeld = false;
+                            }
+                        }
+                        if (element.label == L"Hide High Gears" || element.label == L"Use Right Stick for Knob" || element.label == L"16-Gear Set") {
+                            ComputeLayout(hwnd);
+                            ComputeIntersections();
+                        }
+                        if (element.label == L"Use Throttle/Brake (W/S)" && !useThrottleBrakeAxes) {
+                            ResetThrottleBrake();
+                        }
+
+                        InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                        if (element.label == L"Fancy Knob Mode") InvalidateRect(hwnd, NULL, TRUE);
+                        return 0; // Handled
+                    }
+                    if (element.type == SettingType::SLIDER_INT || element.type == SettingType::SLIDER_FLOAT || element.type == SettingType::SLIDER_BYTE)
+                    {
+                        // Check Reset Button first
+                        r = GetScrolledRect(element.resetRect);
+                        if (PtInRect(&r, pt))
+                        {
+                            if (element.type == SettingType::SLIDER_INT) *(int*)element.valuePtr = (int)element.defaultValue;
+                            else if (element.type == SettingType::SLIDER_BYTE) *(unsigned char*)element.valuePtr = (unsigned char)element.defaultValue;
+                            else *(float*)element.valuePtr = element.defaultValue;
+
+                            // Specialized reset logic
+                            if (element.label == L"Gear Radius" || element.label == L"Snap Sensitivity") {
+                                gearSnapInThreshold = int(gearRadius * gearSnapInMultiplier);
+                                ComputeIntersections();
+                            }
+                            if (element.label == L"Diagonal Assist Strength") {
+                                enterVerticalThreshold = int(baseEnterVerticalThreshold * diagonalAssist);
+                                for (auto& inter : intersections) inter.radius = int(baseIntersectionRadius * diagonalAssist);
+                            }
+                            if (element.label == L"H-Shifter Size") {
+                                ComputeLayout(hwnd);
+                                ComputeIntersections();
+                            }
+
+                            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                            return 0;
+                        }
+
+                        g_draggingElement = &element;
+                        SetCapture(hwnd);
+                        return 0; // Handled
+                    }
                 }
-
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
             }
-            r = GetScrolledRect(showYBarToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                showYBar = !showYBar;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            r = GetScrolledRect(invertScrollToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                invertScrollClutchAxis = !invertScrollClutchAxis;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            // Binding Mode For R-Axis toggle
-            r = GetScrolledRect(bindingModeForAxisToggle);
-            if (PtInRect(&r, pt))
-            {
-                bindingModeForRAxis = !bindingModeForRAxis;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            r = GetScrolledRect(realisticKnobToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                realisticKnob = !realisticKnob;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-                InvalidateRect(hwnd, NULL, TRUE); // redraw main window to update knob appearance
-            }
-            // Clutch Lock Gear Toggle
-            r = GetScrolledRect(clutchLockGearToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                clutchLockGear = !clutchLockGear;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            // Invert Assist Axes toggle
-            r = GetScrolledRect(invertAssistToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                invertAssistAxes = !invertAssistAxes;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            r = GetScrolledRect(yBarAlphaSlider);
-            if (PtInRect(&r, pt))
-            {
-                draggingYBarAlphaSlider = true;
-                SetCapture(hwnd);
-            }
-
-            // Add this after the showYBar toggle click handling:
-            r = GetScrolledRect(yBarFixedTransToggle);
-            if (PtInRect(&r, pt))
-            {
-                useYbarFixedTransparency = !useYbarFixedTransparency;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            // Use LT as Clutch toggle
-            r = GetScrolledRect(useLTAsClutchToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                useLTAsClutch = !useLTAsClutch;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            r = GetScrolledRect(showXBarToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                showXBar = !showXBar;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            r = GetScrolledRect(knobAccelToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                knobAccelerationEnabled = !knobAccelerationEnabled; // toggle boolean
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);    // redraw
-            }
-            r = GetScrolledRect(useXInputToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                useXInput = !useXInput;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            r = GetScrolledRect(halfScrollClutchToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                useHalfClutch = !useHalfClutch;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            r = GetScrolledRect(optimizationToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                disableSmartRedraws = !disableSmartRedraws; // Toggle the actual flag
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-
-            r = GetScrolledRect(controllerSensSliderRect);
-            if (PtInRect(&r, pt))
-            {
-                controllerDraggingSensSlider = true;
-                SetCapture(hwnd);
-            }
-            // --- Use Right Stick for Knob Toggle ---
-            r = GetScrolledRect(useRightStickToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                useRightStick = !useRightStick; // toggle the boolean
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            r = GetScrolledRect(disableRealKnobMovementToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                disableRealKnobMovement = !disableRealKnobMovement;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            // Add this with your other toggle click handlers:
-            r = GetScrolledRect(useThrottleBrakeToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                useThrottleBrakeAxes = !useThrottleBrakeAxes;
-
-                // If disabling, reset throttle/brake to prevent stuck inputs
-                if (!useThrottleBrakeAxes)
-                {
-                    ResetThrottleBrake();
-                }
-
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE); // redraw
-            }
-            r = GetScrolledRect(dynamicTransparencyToggleRect);
-            if (PtInRect(&r, pt))
-            {
-                dynamicTransparencyEnabled = !dynamicTransparencyEnabled;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            }
-            r = GetScrolledRect(minTransparencySliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingMinTransparencySlider = true;
-                SetCapture(hwnd);
-            }
-            r = GetScrolledRect(transparencyFadeDelaySliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingTransparencyFadeDelaySlider = true;
-                SetCapture(hwnd);
-
-            }
-
-            r = GetScrolledRect(transparencySliderRect);
-            if (PtInRect(&r, pt))
-            {
-                draggingTransparencySlider = true;
-                SetCapture(hwnd);
-            }
+        }

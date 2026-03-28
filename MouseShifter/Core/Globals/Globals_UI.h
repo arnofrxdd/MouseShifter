@@ -26,6 +26,7 @@ bool realKnobSnapped = false;
 bool ghostKnobSnapped = false;
 bool g_reverseAuthorizedOnRail = false;
 std::map<int, bool> buttonPressedState;
+std::map<std::wstring, bool> g_collapsedSections; // Tracks expanded/collapsed state of headings
 
 // Forward declarations for Reverse Lock Fix
 bool IsReverseUnlockActive_Fix();

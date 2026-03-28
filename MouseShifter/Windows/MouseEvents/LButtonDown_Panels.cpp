@@ -1,4 +1,4 @@
-﻿        // --- Block clicks through dropdown ---
+        // --- Block clicks through dropdown ---
         RECT togglePanelRectHit = {
             (LONG)togglePanelRectUnified.X,
             (LONG)togglePanelRectUnified.Y,
@@ -143,14 +143,14 @@
             if (PtInRect(&g_CloseButtonRect, pt))
             {
                 PostMessage(hwnd, WM_CLOSE, 0, 0);
-                break;
+                return 0;
             }
 
             // Minimize button functionality (for Maximize/Restore button)
             if (PtInRect(&g_MaxButtonRect, pt))
             {
                 ShowWindow(hwnd, SW_MINIMIZE);
-                break;
+                return 0;
             }
 
 
@@ -160,7 +160,7 @@
             if (pt.y >= 0 && pt.y < 30 && pt.x < g_MaxButtonRect.left)
             {
                 SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
-                break;
+                return 0;
             }
         }
         // Update button click (add debug output)
@@ -217,8 +217,8 @@
 
         // --- Keybind panel click ---
         if (showKeybindPanel &&
-            mouseX >= panelRect.X && mouseX <= panelRect.X + panelRect.Width &&
-            mouseY >= panelRect.Y && mouseY <= panelRect.Y + panelRect.Height)
+            pt.x >= panelRect.X && pt.x <= panelRect.X + panelRect.Width &&
+            pt.y >= panelRect.Y && pt.y <= panelRect.Y + panelRect.Height)
         {
             // Match drawing offsets
             int rowHeight = 36;            // same as in draw
@@ -251,7 +251,7 @@
                     return a < b; });
 
             // Compute clicked row dynamically including spacing
-            int index = (mouseY - yStart) / (rowHeight + rowSpacing);
+            int index = (pt.y - yStart) / (rowHeight + rowSpacing);
 
             if (index >= 0 && index < (int)sortedKeys.size())
             {

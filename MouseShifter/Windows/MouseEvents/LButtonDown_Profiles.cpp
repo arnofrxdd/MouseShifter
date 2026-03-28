@@ -1,17 +1,17 @@
-﻿        if (creatingNewProfile) {
-            RECT adjustedProfileButtonRect = {
-                profileButtonRect.left,
-                profileButtonRect.top + settingsScrollOffset,
-                profileButtonRect.right,
-                profileButtonRect.bottom + settingsScrollOffset
-            };
-            RECT adjustedCreateProfileButtonRect = {
-                createProfileButtonRect.left,
-                createProfileButtonRect.top + settingsScrollOffset,
-                createProfileButtonRect.right,
-                createProfileButtonRect.bottom + settingsScrollOffset
-            };
+        RECT adjustedProfileButtonRect = {
+            profileButtonRect.left,
+            profileButtonRect.top + settingsScrollOffset,
+            profileButtonRect.right,
+            profileButtonRect.bottom + settingsScrollOffset
+        };
+        RECT adjustedCreateProfileButtonRect = {
+            createProfileButtonRect.left,
+            createProfileButtonRect.top + settingsScrollOffset,
+            createProfileButtonRect.right,
+            createProfileButtonRect.bottom + settingsScrollOffset
+        };
 
+        if (creatingNewProfile) {
             // Check if click is NOT in the profile creation area
             if (!PtInRect(&adjustedProfileButtonRect, pt) && !PtInRect(&adjustedCreateProfileButtonRect, pt)) {
                 // Clicked outside profile creation area - create the profile
@@ -26,13 +26,7 @@
             // If click is inside profile creation area, continue with normal processing
         }
 
-        // Only process these if NO dropdowns are open
-        RECT adjustedProfileButtonRect = {
-            profileButtonRect.left,
-            profileButtonRect.top + settingsScrollOffset,
-            profileButtonRect.right,
-            profileButtonRect.bottom + settingsScrollOffset
-        };
+        // Process button clicks
         if (PtInRect(&adjustedProfileButtonRect, pt)) {
             RefreshProfilesList();
             profileDropdownOpen = true;
@@ -40,12 +34,6 @@
             return 0;
         }
 
-        RECT adjustedCreateProfileButtonRect = {
-            createProfileButtonRect.left,
-            createProfileButtonRect.top + settingsScrollOffset,
-            createProfileButtonRect.right,
-            createProfileButtonRect.bottom + settingsScrollOffset
-        };
         if (PtInRect(&adjustedCreateProfileButtonRect, pt)) {
             creatingNewProfile = true;
             newProfileName = "New Profile";

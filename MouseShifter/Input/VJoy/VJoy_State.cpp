@@ -1,4 +1,4 @@
-﻿enum InputType
+enum InputType
 {
     KEYBOARD,
     MOUSE,

@@ -1,4 +1,4 @@
-﻿
+
 void RefreshProfilesList();
 
 void InitializeProfiles() {
@@ -102,5 +102,61 @@ void SwitchProfile(int index, HWND hwnd) {
         // Recompute layout
         ComputeLayout(hwnd);
         ComputeIntersections();
+    }
+}
+void DuplicateProfile(int index, HWND hwnd) {
+    if (index >= 0 && index < (int)profileNames.size()) {
+        std::string profilesDir = GetExeFolder() + "\\profiles";
+        std::string sourcePath = profilesDir + "\\" + profileNames[index];
+        std::string newProfileNameStr = profileNames[index];
+        if (newProfileNameStr.size() > 4 && newProfileNameStr.substr(newProfileNameStr.size() - 4) == ".ini")
+            newProfileNameStr = newProfileNameStr.substr(0, newProfileNameStr.size() - 4);
+        
+        std::string destPath = profilesDir + "\\" + newProfileNameStr + " - Copy.ini";
+
+        if (CopyFileA(sourcePath.c_str(), destPath.c_str(), FALSE)) {
+            RefreshProfilesList();
+            ComputeLayout(hwnd);
+            ComputeIntersections();
+        }
+    }
+}
+
+void DeleteProfile(int index, HWND hwnd) {
+    if (index >= 0 && index < (int)profileNames.size() && profileNames.size() > 1) {
+        std::string profilesDir = GetExeFolder() + "\\profiles";
+        std::string filePath = profilesDir + "\\" + profileNames[index];
+
+        if (DeleteFileA(filePath.c_str())) {
+            if (currentProfileIndex == index) {
+                currentProfileIndex = 0;
+            } else if (currentProfileIndex > index) {
+                currentProfileIndex--;
+            }
+            RefreshProfilesList();
+            SwitchProfile(currentProfileIndex, hwnd);
+        }
+    }
+}
+
+void RenameProfile(int index, std::string newName, HWND hwnd) {
+    if (index >= 0 && index < (int)profileNames.size()) {
+        std::string profilesDir = GetExeFolder() + "\\profiles";
+        std::string oldPath = profilesDir + "\\" + profileNames[index];
+        std::string newPath = profilesDir + "\\" + newName + ".ini";
+
+        if (MoveFileA(oldPath.c_str(), newPath.c_str())) {
+            RefreshProfilesList();
+            // Find new index
+            for (size_t i = 0; i < profileNames.size(); ++i) {
+                if (profileNames[i] == newName + ".ini") {
+                    currentProfileIndex = i;
+                    break;
+                }
+            }
+            configFile = profilesDir + "\\" + profileNames[currentProfileIndex];
+            ComputeLayout(hwnd);
+            ComputeIntersections();
+        }
     }
 }

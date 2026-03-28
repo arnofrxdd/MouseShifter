@@ -1,4 +1,4 @@
-﻿            // Steering Sensitivity
+            // Steering Sensitivity
             r = GetScrolledRect(steeringSensSliderRect);
             if (PtInRect(&r, pt))
             {
@@ -144,4 +144,3 @@
                 gearLayoutDropdownOpen = false; // Close other dropdown
                 InvalidateRect(hwnd, &settingsPanelRect, FALSE);
             }
-        }
