@@ -1,3 +1,7 @@
+        extern void DeleteProfile(int index, HWND hwnd);
+        extern void DuplicateProfile(int index, HWND hwnd);
+        extern void SwitchProfile(int index, HWND hwnd);
+
         // Handle ALL dropdown clicks first and block any other processing when dropdowns are open
         if (profileDropdownOpen || gearLayoutDropdownOpen || hShifterLayoutDropdownOpen)
         {
@@ -28,11 +32,34 @@
                         };
 
                         if (PtInRect(&itemRect, pt)) {
-                            SwitchProfile((int)i, hwnd);
-                            profileDropdownOpen = false;
-                            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-                            handledInDropdown = true;
-                            break;
+                            // Check icons
+                            int iconW = 20;
+                            RECT cloneBtn = { itemRect.right - 50, itemRect.top, itemRect.right - 30, itemRect.bottom };
+                            RECT deleteBtn = { itemRect.right - 25, itemRect.top, itemRect.right - 5, itemRect.bottom };
+
+                            if (PtInRect(&cloneBtn, pt)) {
+                                DuplicateProfile((int)i, hwnd);
+                                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                                profileDropdownOpen = false; // Close after action? Or keep open? Let's close for clarity.
+                                handledInDropdown = true;
+                                break;
+                            }
+                            else if (PtInRect(&deleteBtn, pt)) {
+                                if (profileNames.size() > 1) { // Don't delete last profile
+                                    DeleteProfile((int)i, hwnd);
+                                    InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                                }
+                                profileDropdownOpen = false;
+                                handledInDropdown = true;
+                                break;
+                            }
+                            else {
+                                SwitchProfile((int)i, hwnd);
+                                profileDropdownOpen = false;
+                                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                                handledInDropdown = true;
+                                break;
+                            }
                         }
                     }
                 }

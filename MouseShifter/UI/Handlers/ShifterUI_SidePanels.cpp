@@ -1,14 +1,19 @@
-﻿    if (showKeybindPanel || showInputPanel || showTogglePanel)
+    if (showKeybindPanel || showInputPanel || showTogglePanel)
     {
         using namespace Gdiplus;
 
         // --- Clip drawing to panel area ---
         graphics.SetClip(panelRect);
 
+        // Sidebar Background removed at user request
+
         FontFamily fontFamily(L"Segoe UI");
         Font titleFont(&fontFamily, 22, FontStyleBold, UnitPixel);
         Font subtitleFont(&fontFamily, 14, FontStyleRegular, UnitPixel);
         Font rowFont(&fontFamily, 16, FontStyleRegular, UnitPixel);
+
+        // --- Pulse Animation Factor ---
+        float pulse = (sin(GetTickCount() * 0.006f) + 1.0f) / 2.0f; // Smooth pulse 0.0 to 1.0
 
         SolidBrush titleBrush(Color(0, 255, 136));
         SolidBrush subtitleBrush(Color(180, 180, 180));
@@ -36,17 +41,54 @@
         // --- KEYBIND PANEL ---
         if (showKeybindPanel)
         {
-            // Title
-            RectF titleRectF((REAL)panelRect.X, (REAL)y, (REAL)panelWidth, 30);
-            graphics.DrawString(L"Key Bindings", -1, &titleFont, titleRectF, &centerAlign, &titleBrush);
+            // Title and Reset All
+            RectF titleRectF((REAL)panelRect.X + 15, (REAL)y, (REAL)panelWidth - 120, 30); // smaller width to avoid button
+            graphics.DrawString(L"Key Bindings", -1, &titleFont, titleRectF, &leftAlign, &titleBrush);
 
-            y += 32;
+            // Reset All Button (Top Right of section)
+            float resetAllW = 95;   // slightly wider
+            float resetAllH = 26;   // slightly taller
+            float resetAllX = panelRect.X + panelRect.Width - resetAllW - 20;
+            float resetAllY = y + 2;
+            RectF resetAllRectF(resetAllX, resetAllY, resetAllW, resetAllH);
+            resetAllButtonRect = { (int)resetAllX, (int)resetAllY, (int)(resetAllX + resetAllW), (int)(resetAllY + resetAllH) };
+
+            POINT cursor; GetCursorPos(&cursor); ScreenToClient(hwnd, &cursor);
+            bool resetAllHover = PtInRect(&resetAllButtonRect, cursor);
+
+            GraphicsPath resetPath;
+            float rr = 6.0f;
+            resetPath.AddArc(resetAllRectF.X, resetAllRectF.Y, rr * 2, rr * 2, 180, 90);
+            resetPath.AddArc(resetAllRectF.X + resetAllRectF.Width - rr * 2, resetAllRectF.Y, rr * 2, rr * 2, 270, 90);
+            resetPath.AddArc(resetAllRectF.X + resetAllRectF.Width - rr * 2, resetAllRectF.Y + resetAllRectF.Height - rr * 2, rr * 2, rr * 2, 0, 90);
+            resetPath.AddArc(resetAllRectF.X, resetAllRectF.Y + resetAllRectF.Height - rr * 2, rr * 2, rr * 2, 90, 90);
+            resetPath.CloseFigure();
+
+            // Premium Gradient/Color for Reset All
+            Color crimsonStart = resetAllHover ? Color(255, 120, 40, 40) : Color(255, 60, 20, 20);
+            Color crimsonEnd = resetAllHover ? Color(255, 80, 20, 20) : Color(255, 40, 10, 10);
+            LinearGradientBrush resetBrush(resetAllRectF, crimsonStart, crimsonEnd, LinearGradientModeVertical);
+            
+            graphics.FillPath(&resetBrush, &resetPath);
+            Pen resetPen(resetAllHover ? Color(255, 255, 100, 100) : Color(255, 180, 60, 60), 1.0f);
+            graphics.DrawPath(&resetPen, &resetPath);
+            
+            // Text with icon
+            StringFormat resetSF;
+            resetSF.SetAlignment(StringAlignmentCenter);
+            resetSF.SetLineAlignment(StringAlignmentCenter);
+            graphics.DrawString(L"\x21BB Reset All", -1, &subtitleFont, resetAllRectF, &resetSF, &textBrush);
+
+            y += 35; // added 3px more breathing room
 
             // Subtitle
             RectF subtitleRectF((REAL)panelRect.X, (REAL)y, (REAL)panelWidth, 20);
             graphics.DrawString(L"Shift+LMB to pick vJoy buttons", -1, &subtitleFont, subtitleRectF, &centerAlign, &subtitleBrush);
 
             y += 30;
+
+            // Clear map before repopulating
+            gearResetBtnRects.clear();
 
             // Sorted gear keys
             std::vector<std::string> sortedKeys;
@@ -76,96 +118,100 @@
             for (auto& gear : sortedKeys)
             {
                 GearInput input = gearInputMap[gear];
-
                 std::string keyNameStr = "Unknown";
-                if (input.type == KEYBOARD)
-                {
+                if (input.type == KEYBOARD) {
                     char buffer[64];
                     if (GetKeyNameTextA(MapVirtualKey(input.code, MAPVK_VK_TO_VSC) << 16, buffer, 64) > 0)
                         keyNameStr = buffer;
                 }
-                else if (input.type == MOUSE)
-                {
-                    switch (input.code)
-                    {
-                    case 1:
-                        keyNameStr = "LMB";
-                        break;
-                    case 2:
-                        keyNameStr = "RMB";
-                        break;
-                    case 3:
-                        keyNameStr = "MMB";
-                        break;
-                    default:
-                        keyNameStr = "Mouse " + std::to_string(input.code);
+                else if (input.type == MOUSE) {
+                    switch (input.code) {
+                    case 1: keyNameStr = "LMB"; break;
+                    case 2: keyNameStr = "RMB"; break;
+                    case 3: keyNameStr = "MMB"; break;
+                    default: keyNameStr = "Mouse " + std::to_string(input.code);
                     }
                 }
-                else if (input.type == VJOY_BUTTON)
-                {
+                else if (input.type == VJOY_BUTTON) {
                     keyNameStr = "vJoy Btn " + std::to_string(input.code);
                 }
 
-                Color textColor = (keybindBeingSet == gear) ? Color(255, 220, 0) : Color(220, 220, 220);
-                SolidBrush textBrushRow(textColor);
+                bool isActive = (gear == activeGear && gear != "N");
+                bool isBeingSet = (keybindBeingSet == gear);
+                bool isHovered = (hoveredKeybindGear == gear);
 
-                // Check if this gear has an active glow animation
-                float glowAlpha = 0.0f;
+                // --- Modern Row Card ---
+                RectF rowRectF((REAL)panelRect.X + 8, (REAL)y, (REAL)panelWidth - 16, (REAL)rowHeight);
+                float br = 8.0f;
+                GraphicsPath rowPath;
+                rowPath.AddArc(rowRectF.X, rowRectF.Y, br * 2, br * 2, 180, 90);
+                rowPath.AddArc(rowRectF.X + rowRectF.Width - br * 2, rowRectF.Y, br * 2, br * 2, 270, 90);
+                rowPath.AddArc(rowRectF.X + rowRectF.Width - br * 2, rowRectF.Y + rowRectF.Height - br * 2, br * 2, br * 2, 0, 90);
+                rowPath.AddArc(rowRectF.X, rowRectF.Y + rowRectF.Height - br * 2, br * 2, br * 2, 90, 90);
+                rowPath.CloseFigure();
+
+                // --- Subtle Animation Logic ---
+                float activeAlpha = 0.0f;
                 if (keybindAnimations.find(gear) != keybindAnimations.end()) {
-                    glowAlpha = keybindAnimations[gear].glowAlpha;
+                    activeAlpha = keybindAnimations[gear].glowAlpha / MAX_GLOW_ALPHA; // 0.0 to 1.0 based on fade
                 }
 
-                // Base row color
-                Color rowColor = (keybindBeingSet == gear) ? Color(40, 40, 0) : Color(36, 36, 36);
+                // Background Gradient with Active Glow
+                Color rowBgStart, rowBgEnd;
+                if (isBeingSet) {
+                    // Intense Pulsing Teal for Capture Mode (Pulse is still useful here)
+                    rowBgStart = Color((BYTE)(40 + 40 * pulse), (BYTE)(40 + 60 * pulse), (BYTE)(30 + 50 * pulse));
+                    rowBgEnd = Color((BYTE)(20 + 30 * pulse), (BYTE)(20 + 30 * pulse), (BYTE)(15 + 25 * pulse));
+                } else if (activeAlpha > 0.01f) {
+                    // Subtle Bright Highlight with Fade transition (NO Border)
+                    rowBgStart = Color((BYTE)(20 + 50 * activeAlpha), (BYTE)(35 + 85 * activeAlpha), (BYTE)(30 + 70 * activeAlpha));
+                    rowBgEnd = Color((BYTE)(10 + 25 * activeAlpha), (BYTE)(20 + 45 * activeAlpha), (BYTE)(15 + 35 * activeAlpha));
+                } else {
+                    rowBgStart = isHovered ? Color(45, 45, 45) : Color(28, 28, 28);
+                    rowBgEnd = isHovered ? Color(35, 35, 35) : Color(24, 24, 24);
+                }
+                
+                LinearGradientBrush rowBg(rowRectF, rowBgStart, rowBgEnd, LinearGradientModeVertical);
+                graphics.FillPath(&rowBg, &rowPath);
 
-                // Apply glow effect if active
-                if (glowAlpha > 0.0f) {
-                    // Create green glow colors (same as title brush: Color(0, 255, 136))
-                    Color innerGlow(0, 255, 136, (int)(glowAlpha * 180));  // Green inner glow
-                    Color outerGlow(0, 200, 100, (int)(glowAlpha * 80));   // Slightly darker green outer glow
-
-                    // Draw outer subtle glow
-                    SolidBrush outerGlowBrush(outerGlow);
-                    RectF outerGlowRect((REAL)panelRect.X, (REAL)y, (REAL)panelWidth, (REAL)rowHeight);
-                    graphics.FillRectangle(&outerGlowBrush, outerGlowRect);
-
-                    // Draw inner strong glow
-                    SolidBrush innerGlowBrush(innerGlow);
-                    RectF innerGlowRect((REAL)panelRect.X + 1, (REAL)y + 1, (REAL)panelWidth - 2, (REAL)rowHeight - 2);
-                    graphics.FillRectangle(&innerGlowBrush, innerGlowRect);
-
-                    // Make the row slightly brighter during glow with green tint
-                    rowColor = Color(
-                        min(255, rowColor.GetR() + (int)(20 * glowAlpha)),  // Less red
-                        min(255, rowColor.GetG() + (int)(40 * glowAlpha)),  // More green
-                        min(255, rowColor.GetB() + (int)(10 * glowAlpha))   // Slight blue
-                    );
+                // Highlight border ONLY for Capture Mode or Hover (NO Border for Active State)
+                if (isBeingSet || isHovered) {
+                    Color borderCol;
+                    if (isBeingSet) {
+                        borderCol = Color((BYTE)(255 * pulse), 0, 255, 170);
+                    } else {
+                        borderCol = Color(60, 60, 60);
+                    }
+                    
+                    Pen highlightPen(borderCol, isBeingSet ? 2.0f : 1.0f);
+                    graphics.DrawPath(&highlightPen, &rowPath);
                 }
 
-                SolidBrush rowBrush(rowColor);
-
-                // Remove border by using the same rect without +2/-4 adjustments
-                RectF rowRectF((REAL)panelRect.X, (REAL)y, (REAL)panelWidth, (REAL)rowHeight);
-                graphics.FillRectangle(&rowBrush, rowRectF);
-
-                RectF gearRectF((REAL)panelRect.X + 10, (REAL)(y + rowPadding / 2), 50.0f, (REAL)(rowHeight - rowPadding));
-                StringFormat leftAlign;
-                leftAlign.SetAlignment(StringAlignmentNear);
-                leftAlign.SetLineAlignment(StringAlignmentCenter);
+                // --- Gear Label (Left) ---
+                RectF gearRectF(rowRectF.X + 12, rowRectF.Y, 40, rowRectF.Height);
                 std::wstring gearW(gear.begin(), gear.end());
-                graphics.DrawString(gearW.c_str(), -1, &rowFont, gearRectF, &leftAlign, &textBrushRow);
+                graphics.DrawString(gearW.c_str(), -1, &rowFont, gearRectF, &leftAlign, (isBeingSet || isActive) ? &accentBrush : &subtitleBrush);
 
+                // --- Key Value (Right) ---
                 std::string displayKey = keyNameStr;
-                if (input.type == MOUSE)
-                    displayKey += " (Mouse)";
-                else if (input.type == KEYBOARD)
-                    displayKey += " (Keyboard)";
-                else if (input.type == VJOY_BUTTON)
-                    displayKey += " (vJoy)";
+                std::wstring iconW = L"";
+                if (input.type == MOUSE) iconW = L"\x25C9";
+                else if (input.type == KEYBOARD) iconW = L"\x2328";
+                else if (input.type == VJOY_BUTTON) iconW = L"\x25CE";
 
-                std::wstring keyW(displayKey.begin(), displayKey.end());
-                RectF keyRectF((REAL)panelRect.X + 80, (REAL)(y + rowPadding / 2), (REAL)panelWidth - 90, (REAL)(rowHeight - rowPadding));
-                graphics.DrawString(keyW.c_str(), -1, &rowFont, keyRectF, &leftAlign, &textBrushRow);
+                std::wstring keyW = iconW + L" " + std::wstring(displayKey.begin(), displayKey.end());
+                RectF keyRectF(rowRectF.X + 60, rowRectF.Y, rowRectF.Width - 100, rowRectF.Height);
+                graphics.DrawString(keyW.c_str(), -1, &rowFont, keyRectF, &leftAlign, (isBeingSet || isActive) ? &labelBrush : &textBrush);
+
+                // --- Row Reset Button (↺) ---
+                float resetX = rowRectF.X + rowRectF.Width - 35; // move slightly left
+                float resetY = rowRectF.Y + (rowRectF.Height - 24) / 2;
+                RectF resetBtnRectF(resetX, resetY, 26, 26);
+                gearResetBtnRects[gear] = { (int)resetX, (int)resetY, (int)(resetX + 26), (int)(resetY + 26) };
+
+                bool rowResetHover = (hoveredResetGear == gear);
+                SolidBrush resetIconBrush(rowResetHover ? Color(255, 255, 100, 100) : Color(255, 100, 100, 100));
+                graphics.DrawString(L"\x21BB", -1, &rowFont, resetBtnRectF, &centerAlign, &resetIconBrush);
 
                 y += rowHeight + rowSpacing;
             }
@@ -182,7 +228,7 @@
             int yInput = (int)inputPanelRectUnified.Y + 10;
 
             RectF subtitleRect(inputPanelRectUnified.X, (REAL)yInput, (REAL)rectWidth, 20);
-            graphics.DrawString(L"Keys & Mouse → vJoy (Shifter Togglers)", -1, &subtitleFont, subtitleRect, &leftAlign, &subtitleBrush);
+            graphics.DrawString(L"Keys & Mouse \x2192 vJoy (Shifter Togglers)", -1, &subtitleFont, subtitleRect, &leftAlign, &subtitleBrush);
 
             yInput += 28;
 
@@ -193,50 +239,73 @@
             for (size_t i = 0; i < inputMap.size(); ++i)
             {
                 InputToVJoy& input = inputMap[i];
-                std::wstring keyName;
+                std::wstring keyName = L"Unknown";
 
-                // Determine key name
-                if (input.type == KEYBOARD)
-                {
+                if (input.type == KEYBOARD) {
                     wchar_t buffer[64];
                     if (GetKeyNameTextW(MapVirtualKeyW(input.code, MAPVK_VK_TO_VSC) << 16, buffer, 64) > 0)
                         keyName = buffer;
                 }
-                else if (input.type == MOUSE)
-                {
-                    switch (input.code)
-                    {
-                    case 1:
-                        keyName = L"LMB";
-                        break;
-                    case 2:
-                        keyName = L"RMB";
-                        break;
-                    case 3:
-                        keyName = L"MMB";
-                        break;
-                    default:
-                        keyName = L"Mouse " + std::to_wstring(input.code);
+                else if (input.type == MOUSE) {
+                    switch (input.code) {
+                    case 1: keyName = L"LMB"; break;
+                    case 2: keyName = L"RMB"; break;
+                    case 3: keyName = L"MMB"; break;
+                    default: keyName = L"Mouse " + std::to_wstring(input.code);
                     }
                 }
-                else if (input.type == VJOY_BUTTON)
-                {
+                else if (input.type == VJOY_BUTTON) {
                     keyName = L"vJoy Btn " + std::to_wstring(input.code);
                 }
 
-                // Row background
-                Color rowColor = (inputBeingSet == std::to_string(i)) ? Color(0, 255, 136) : Color(36, 36, 36);
-                SolidBrush rowBrush(rowColor);
-                RectF rowRect((REAL)inputPanelRectUnified.X + leftMargin, (REAL)yInput, (REAL)keyColumnWidth, (REAL)rowHeight);
-                graphics.FillRectangle(&rowBrush, rowRect);
+                bool isBeingSet = (inputBeingSet == std::to_string(i));
+                bool isHovered = (hoveredInputIndex == (int)i);
 
-                // Combined text centered
-                std::wstring combinedText = keyName + L" → vJoy " + std::to_wstring(input.vjoyButton);
-                StringFormat centerFormat;
-                centerFormat.SetAlignment(StringAlignmentCenter);
-                centerFormat.SetLineAlignment(StringAlignmentCenter);
+                // Row background (Card)
+                RectF rowRect((REAL)inputPanelRectUnified.X + 8, (REAL)yInput, (REAL)panelWidth - 16, (REAL)rowHeight);
+                float br = 8.0f;
+                GraphicsPath rowPath;
+                rowPath.AddArc(rowRect.X, rowRect.Y, br * 2, br * 2, 180, 90);
+                rowPath.AddArc(rowRect.X + rowRect.Width - br * 2, rowRect.Y, br * 2, br * 2, 270, 90);
+                rowPath.AddArc(rowRect.X + rowRect.Width - br * 2, rowRect.Y + rowRect.Height - br * 2, br * 2, br * 2, 0, 90);
+                rowPath.AddArc(rowRect.X, rowRect.Y + rowRect.Height - br * 2, br * 2, br * 2, 90, 90);
+                rowPath.CloseFigure();
 
-                graphics.DrawString(combinedText.c_str(), -1, &rowFont, rowRect, &centerFormat, &textBrush);
+                Color rowBgStart, rowBgEnd;
+                if (isBeingSet) {
+                    rowBgStart = Color((BYTE)(40 + 40 * pulse), (BYTE)(40 + 60 * pulse), (BYTE)(30 + 50 * pulse));
+                    rowBgEnd = Color((BYTE)(20 + 30 * pulse), (BYTE)(20 + 30 * pulse), (BYTE)(15 + 25 * pulse));
+                } else {
+                    rowBgStart = isHovered ? Color(45, 45, 45) : Color(28, 28, 28);
+                    rowBgEnd = isHovered ? Color(35, 35, 35) : Color(24, 24, 24);
+                }
+                
+                LinearGradientBrush rowBg(rowRect, rowBgStart, rowBgEnd, LinearGradientModeVertical);
+                graphics.FillPath(&rowBg, &rowPath);
+
+                if (isBeingSet || isHovered) {
+                    Color borderCol = isBeingSet ? Color((BYTE)(255 * pulse), 0, 255, 170) : Color(60, 60, 60);
+                    Pen highlightPen(borderCol, isBeingSet ? 2.0f : 1.0f);
+                    graphics.DrawPath(&highlightPen, &rowPath);
+                }
+
+                std::wstring iconW = L"";
+                if (input.type == MOUSE) iconW = L"\x25C9";
+                else if (input.type == KEYBOARD) iconW = L"\x2328";
+                else if (input.type == VJOY_BUTTON) iconW = L"\x25CE";
+
+                std::wstring combinedText = iconW + L" " + keyName + L" \u2192 vJoy " + std::to_wstring(input.vjoyButton);
+                graphics.DrawString(combinedText.c_str(), -1, &rowFont, rowRect, &centerAlign, isBeingSet ? &labelBrush : &textBrush);
+
+                // --- Row Reset Button (↺) ---
+                float resetX = rowRect.X + rowRect.Width - 35;
+                float resetY = rowRect.Y + (rowRect.Height - 24) / 2;
+                RectF resetBtnRectF(resetX, resetY, 26, 26);
+                inputResetBtnRects[(int)i] = { (int)resetX, (int)resetY, (int)(resetX + 26), (int)(resetY + 26) };
+
+                bool rowResetHover = (hoveredInputResetIndex == (int)i);
+                SolidBrush resetIconBrush(rowResetHover ? Color(255, 255, 100, 100) : Color(255, 100, 100, 100));
+                graphics.DrawString(L"\x21BB", -1, &rowFont, resetBtnRectF, &centerAlign, &resetIconBrush);
 
                 yInput += rowHeight + rowSpacing;
             }
@@ -251,182 +320,110 @@
         {
             int rectWidth = 320;
             togglePanelRectUnified = Rect(panelRect.X, y, panelRect.X + rectWidth, y + 200); // store globally
-
             int yToggle = togglePanelRectUnified.Y + 10;
 
+            // --- Helper for Toggle Cards ---
+            auto DrawToggleCard = [&](RectF cardRect, const wchar_t* label, const wchar_t* value, bool isBeingSet, bool isHovered) {
+                float br = 8.0f;
+                GraphicsPath cardPath;
+                cardPath.AddArc(cardRect.X, cardRect.Y, br * 2, br * 2, 180, 90);
+                cardPath.AddArc(cardRect.X + cardRect.Width - br * 2, cardRect.Y, br * 2, br * 2, 270, 90);
+                cardPath.AddArc(cardRect.X + cardRect.Width - br * 2, cardRect.Y + cardRect.Height - br * 2, br * 2, br * 2, 0, 90);
+                cardPath.AddArc(cardRect.X, cardRect.Y + cardRect.Height - br * 2, br * 2, br * 2, 90, 90);
+                cardPath.CloseFigure();
+
+                Color bgStart, bgEnd;
+                if (isBeingSet) {
+                    bgStart = Color((BYTE)(40 + 40 * pulse), (BYTE)(40 + 60 * pulse), (BYTE)(30 + 50 * pulse));
+                    bgEnd = Color((BYTE)(20 + 30 * pulse), (BYTE)(20 + 30 * pulse), (BYTE)(15 + 25 * pulse));
+                } else {
+                    bgStart = isHovered ? Color(45, 45, 45) : Color(28, 28, 28);
+                    bgEnd = isHovered ? Color(35, 35, 35) : Color(24, 24, 24);
+                }
+                
+                LinearGradientBrush bg(cardRect, bgStart, bgEnd, LinearGradientModeVertical);
+                graphics.FillPath(&bg, &cardPath);
+
+                if (isBeingSet || isHovered) {
+                    Color borderCol = isBeingSet ? Color((BYTE)(255 * pulse), 0, 255, 170) : Color(60, 60, 60);
+                    Pen highlightPen(borderCol, isBeingSet ? 2.0f : 1.0f);
+                    graphics.DrawPath(&highlightPen, &cardPath);
+                }
+
+                RectF labelRect(cardRect.X + 8, cardRect.Y + 4, cardRect.Width - 16, 12);
+                graphics.DrawString(label, -1, &subtitleFont, labelRect, &leftAlign, &subtitleBrush);
+
+                RectF valRect(cardRect.X + 8, cardRect.Y + 16, cardRect.Width - 16, cardRect.Height - 16);
+                graphics.DrawString(value, -1, &rowFont, valRect, &centerAlign, isBeingSet ? &labelBrush : &textBrush);
+            };
+
             // Knob Toggle
-            RectF knobSubtitleRect((REAL)togglePanelRectUnified.X, (REAL)yToggle, (REAL)rectWidth, 20);
-            graphics.DrawString(L"Activate Knob Key", -1, &subtitleFont, knobSubtitleRect, &leftAlign, &subtitleBrush);
-
-            yToggle += 25;
-
-            SolidBrush rowBrush1((toggleInputBeingSet || togglePedalBeingSet) ? Color(0, 255, 136) : Color(36, 36, 36));
-            RectF keyRect1F((REAL)togglePanelRectUnified.X + leftMargin, (REAL)yToggle, (REAL)keyColumnWidth, (REAL)rowHeight);
-            graphics.FillRectangle(&rowBrush1, keyRect1F);
-
-            g_toggleKeyRect.left = (LONG)keyRect1F.X;
-            g_toggleKeyRect.top = (LONG)keyRect1F.Y;
-            g_toggleKeyRect.right = (LONG)(keyRect1F.X + keyRect1F.Width);
-            g_toggleKeyRect.bottom = (LONG)(keyRect1F.Y + keyRect1F.Height);
-
+            yToggle += 5;
+            RectF knobRect((REAL)togglePanelRectUnified.X + 8, (REAL)yToggle, (REAL)panelWidth - 16, (REAL)rowHeight + 10);
+            
             wchar_t keyName1[64] = L"";
-            if (toggleInputBeingSet)
-            {
-                wcscpy_s(keyName1, L"Press any key...");
-            }
-            else if (togglePedalBeingSet)
-            {
-                wcscpy_s(keyName1, L"Press a pedal...");
-            }
-            else
-            {
-                switch (g_knobToggleType)
-                {
+            if (toggleInputBeingSet) wcscpy_s(keyName1, L"\x2328 Press any key...");
+            else if (togglePedalBeingSet) wcscpy_s(keyName1, L"\xD83C\xDFAE Press a pedal...");
+            else {
+                switch (g_knobToggleType) {
                 case TOGGLE_KEYBOARD:
-                    if (g_knobToggleKey != 0 &&
-                        GetKeyNameTextW(MapVirtualKeyW(g_knobToggleKey, MAPVK_VK_TO_VSC) << 16,
-                            keyName1, 64) == 0)
-                    {
-                        wcscpy_s(keyName1, L"Unknown Key");
-                    }
-                    else if (g_knobToggleKey == 0)
-                    {
-                        wcscpy_s(keyName1, L"Not Set");
-                    }
+                    if (g_knobToggleKey != 0 && GetKeyNameTextW(MapVirtualKeyW(g_knobToggleKey, MAPVK_VK_TO_VSC) << 16, keyName1, 64) == 0) wcscpy_s(keyName1, L"Unknown Key");
+                    else if (g_knobToggleKey == 0) wcscpy_s(keyName1, L"Not Set");
                     break;
-
-                    // ✅ Add mouse buttons
-                case TOGGLE_MOUSE_LEFT:
-                    wcscpy_s(keyName1, L"Mouse: Left Button");
-                    break;
-                case TOGGLE_MOUSE_RIGHT:
-                    wcscpy_s(keyName1, L"Mouse: Right Button");
-                    break;
-                case TOGGLE_MOUSE_MIDDLE:
-                    wcscpy_s(keyName1, L"Mouse: Middle Button");
-                    break;
-                case TOGGLE_MOUSE_BUTTON4:
-                    wcscpy_s(keyName1, L"Mouse: Button 4");
-                    break;
-                case TOGGLE_MOUSE_BUTTON5:
-                    wcscpy_s(keyName1, L"Mouse: Button 5");
-                    break;
-
-                    // Existing pedals
-                case TOGGLE_PEDAL_CLUTCH:
-                    wcscpy_s(keyName1, L"Pedal: Clutch");
-                    break;
-                case TOGGLE_PEDAL_BRAKE:
-                    wcscpy_s(keyName1, L"Pedal: Brake");
-                    break;
-                case TOGGLE_PEDAL_ACCEL:
-                    wcscpy_s(keyName1, L"Pedal: Accelerator");
-                    break;
+                case TOGGLE_MOUSE_LEFT: wcscpy_s(keyName1, L"\xD83D\xDDB1 Mouse: Left"); break;
+                case TOGGLE_MOUSE_RIGHT: wcscpy_s(keyName1, L"\xD83D\xDDB1 Mouse: Right"); break;
+                case TOGGLE_MOUSE_MIDDLE: wcscpy_s(keyName1, L"\xD83D\xDDB1 Mouse: Middle"); break;
+                case TOGGLE_MOUSE_BUTTON4: wcscpy_s(keyName1, L"\xD83D\xDDB1 Mouse: Button 4"); break;
+                case TOGGLE_MOUSE_BUTTON5: wcscpy_s(keyName1, L"\xD83D\xDDB1 Mouse: Button 5"); break;
+                case TOGGLE_PEDAL_CLUTCH: wcscpy_s(keyName1, L"\xD83C\xDFAE Pedal: Clutch"); break;
+                case TOGGLE_PEDAL_BRAKE: wcscpy_s(keyName1, L"\xD83C\xDFAE Pedal: Brake"); break;
+                case TOGGLE_PEDAL_ACCEL: wcscpy_s(keyName1, L"\xD83C\xDFAE Pedal: Accel"); break;
                 }
             }
-
-
-
-            graphics.DrawString(keyName1, -1, &rowFont, keyRect1F, &centerAlign, &textBrush);
-
-            yToggle += rowHeight + rowSpacing;
+            DrawToggleCard(knobRect, L"Activate Knob", keyName1, (toggleInputBeingSet || togglePedalBeingSet), (hoveredToggleIndex == 0));
+            
+            g_toggleKeyRect = { (LONG)knobRect.X, (LONG)knobRect.Y, (LONG)(knobRect.X + knobRect.Width), (LONG)(knobRect.Y + knobRect.Height) };
+            yToggle += (int)knobRect.Height + rowSpacing;
 
             // Assist Button
-            RectF assistSubtitleRect((REAL)togglePanelRectUnified.X, (REAL)yToggle, (REAL)rectWidth, 20);
-            graphics.DrawString(L"Knob Assist Button (Controller)", -1, &subtitleFont, assistSubtitleRect, &leftAlign, &subtitleBrush);
-
-            yToggle += 25;
-
-            SolidBrush rowBrush2(assistButtonBeingSet ? Color(0, 255, 136) : Color(36, 36, 36));
-            RectF keyRect2F((REAL)togglePanelRectUnified.X + leftMargin, (REAL)yToggle, (REAL)keyColumnWidth, (REAL)rowHeight);
-            graphics.FillRectangle(&rowBrush2, keyRect2F);
-
-            g_assistButtonRect.left = (LONG)keyRect2F.X;
-            g_assistButtonRect.top = (LONG)keyRect2F.Y;
-            g_assistButtonRect.right = (LONG)(keyRect2F.X + keyRect2F.Width);
-            g_assistButtonRect.bottom = (LONG)(keyRect2F.Y + keyRect2F.Height);
-
+            RectF assistRect((REAL)togglePanelRectUnified.X + 8, (REAL)yToggle, (REAL)panelWidth - 16, (REAL)rowHeight + 10);
             wchar_t keyName2[64] = L"";
-
-            if (assistButtonBeingSet) {
-                wcscpy_s(keyName2, L"Press any button...");
-            }
+            if (assistButtonBeingSet) wcscpy_s(keyName2, L"\xD83C\xDFAE Press any button...");
             else if (g) {
                 switch ((SDL_GameControllerButton)assistButton) {
-                case SDL_CONTROLLER_BUTTON_A:        wcscpy_s(keyName2, L"A Button"); break;
-                case SDL_CONTROLLER_BUTTON_B:        wcscpy_s(keyName2, L"B Button"); break;
-                case SDL_CONTROLLER_BUTTON_X:        wcscpy_s(keyName2, L"X Button"); break;
-                case SDL_CONTROLLER_BUTTON_Y:        wcscpy_s(keyName2, L"Y Button"); break;
-                case SDL_CONTROLLER_BUTTON_BACK:     wcscpy_s(keyName2, L"Back"); break;
-                case SDL_CONTROLLER_BUTTON_GUIDE:    wcscpy_s(keyName2, L"Guide"); break;
-                case SDL_CONTROLLER_BUTTON_START:    wcscpy_s(keyName2, L"Start"); break;
-                case SDL_CONTROLLER_BUTTON_LEFTSTICK: wcscpy_s(keyName2, L"L3"); break;
-                case SDL_CONTROLLER_BUTTON_RIGHTSTICK: wcscpy_s(keyName2, L"R3"); break;
-                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:  wcscpy_s(keyName2, L"LB / L1"); break;
+                case SDL_CONTROLLER_BUTTON_A: wcscpy_s(keyName2, L"Button A"); break;
+                case SDL_CONTROLLER_BUTTON_B: wcscpy_s(keyName2, L"Button B"); break;
+                case SDL_CONTROLLER_BUTTON_X: wcscpy_s(keyName2, L"Button X"); break;
+                case SDL_CONTROLLER_BUTTON_Y: wcscpy_s(keyName2, L"Button Y"); break;
+                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: wcscpy_s(keyName2, L"LB / L1"); break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: wcscpy_s(keyName2, L"RB / R1"); break;
-                case SDL_CONTROLLER_BUTTON_DPAD_UP:    wcscpy_s(keyName2, L"DPad Up"); break;
-                case SDL_CONTROLLER_BUTTON_DPAD_DOWN:  wcscpy_s(keyName2, L"DPad Down"); break;
-                case SDL_CONTROLLER_BUTTON_DPAD_LEFT:  wcscpy_s(keyName2, L"DPad Left"); break;
-                case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: wcscpy_s(keyName2, L"DPad Right"); break;
-                default:                               wcscpy_s(keyName2, L"Unknown Button"); break;
+                default: wcscpy_s(keyName2, L"Controller Button"); break;
                 }
-            }
-            else {
-                wcscpy_s(keyName2, L"None");
-            }
+            } else wcscpy_s(keyName2, L"None");
 
-            graphics.DrawString(keyName2, -1, &rowFont, keyRect2F, &centerAlign, &textBrush);
+            DrawToggleCard(assistRect, L"Knob Assist (Controller)", keyName2, assistButtonBeingSet, (hoveredToggleIndex == 1));
+            g_assistButtonRect = { (LONG)assistRect.X, (LONG)assistRect.Y, (LONG)(assistRect.X + assistRect.Width), (LONG)(assistRect.Y + assistRect.Height) };
+            yToggle += (int)assistRect.Height + rowSpacing;
 
-            yToggle += rowHeight + rowSpacing;
-
-            // Reverse Unlock Button
-            RectF reverseSubtitleRect((REAL)togglePanelRectUnified.X, (REAL)yToggle, (REAL)rectWidth, 20);
-            graphics.DrawString(L"Reverse Unlock Button", -1, &subtitleFont, reverseSubtitleRect, &leftAlign, &subtitleBrush);
-
-            yToggle += 25;
-
-            SolidBrush rowBrush3(reverseUnlockBeingSet ? Color(0, 255, 136) : Color(36, 36, 36));
-            RectF keyRect3F((REAL)togglePanelRectUnified.X + leftMargin, (REAL)yToggle, (REAL)keyColumnWidth, (REAL)rowHeight);
-            graphics.FillRectangle(&rowBrush3, keyRect3F);
-
-            reverseUnlockKeyRect.left = (LONG)keyRect3F.X;
-            reverseUnlockKeyRect.top = (LONG)keyRect3F.Y;
-            reverseUnlockKeyRect.right = (LONG)(keyRect3F.X + keyRect3F.Width);
-            reverseUnlockKeyRect.bottom = (LONG)(keyRect3F.Y + keyRect3F.Height);
-
+            // Reverse Unlock
+            RectF reverseRect((REAL)togglePanelRectUnified.X + 8, (REAL)yToggle, (REAL)panelWidth - 16, (REAL)rowHeight + 10);
             wchar_t keyName3[64] = L"";
-
-            if (reverseUnlockBeingSet) {
-                wcscpy_s(keyName3, L"Press any key/button...");
-            }
+            if (reverseUnlockBeingSet) wcscpy_s(keyName3, L"\x2328 Press any input...");
             else {
-                switch (g_reverseUnlockType)
-                {
+                switch (g_reverseUnlockType) {
                 case TOGGLE_KEYBOARD:
-                    if (g_reverseUnlockKey != 0 &&
-                        GetKeyNameTextW(MapVirtualKeyW(g_reverseUnlockKey, MAPVK_VK_TO_VSC) << 16,
-                            keyName3, 64) == 0)
-                    {
-                        wcscpy_s(keyName3, L"Unknown Key");
-                    }
-                    else if (g_reverseUnlockKey == 0)
-                    {
-                        wcscpy_s(keyName3, L"Not Set");
-                    }
+                    if (g_reverseUnlockKey != 0 && GetKeyNameTextW(MapVirtualKeyW(g_reverseUnlockKey, MAPVK_VK_TO_VSC) << 16, keyName3, 64) == 0) wcscpy_s(keyName3, L"Unknown Key");
+                    else if (g_reverseUnlockKey == 0) wcscpy_s(keyName3, L"Not Set");
                     break;
-                case TOGGLE_MOUSE_LEFT: wcscpy_s(keyName3, L"Mouse: Left Button"); break;
-                case TOGGLE_MOUSE_RIGHT: wcscpy_s(keyName3, L"Mouse: Right Button"); break;
-                case TOGGLE_MOUSE_MIDDLE: wcscpy_s(keyName3, L"Mouse: Middle Button"); break;
-                case TOGGLE_MOUSE_BUTTON4: wcscpy_s(keyName3, L"Mouse: Button 4"); break;
-                case TOGGLE_MOUSE_BUTTON5: wcscpy_s(keyName3, L"Mouse: Button 5"); break;
-                case TOGGLE_PEDAL_CLUTCH: wcscpy_s(keyName3, L"Pedal: Clutch"); break;
-                case TOGGLE_PEDAL_BRAKE: wcscpy_s(keyName3, L"Pedal: Brake"); break;
-                case TOGGLE_PEDAL_ACCEL: wcscpy_s(keyName3, L"Pedal: Accelerator"); break;
+                case TOGGLE_MOUSE_LEFT: wcscpy_s(keyName3, L"\xD83D\xDDB1 Mouse: Left"); break;
+                default: wcscpy_s(keyName3, L"Input Not Set"); break;
                 }
             }
+            DrawToggleCard(reverseRect, L"Reverse Unlock", keyName3, reverseUnlockBeingSet, (hoveredToggleIndex == 2));
+            reverseUnlockKeyRect = { (LONG)reverseRect.X, (LONG)reverseRect.Y, (LONG)(reverseRect.X + reverseRect.Width), (LONG)(reverseRect.Y + reverseRect.Height) };
+            yToggle += (int)reverseRect.Height + rowSpacing;
 
-            graphics.DrawString(keyName3, -1, &rowFont, keyRect3F, &centerAlign, &textBrush);
-            yToggle += rowHeight + rowSpacing;
+            rightPanelContentBottom = max(rightPanelContentBottom, yToggle);
             rightPanelContentBottom = max(rightPanelContentBottom, yToggle);
         }
 

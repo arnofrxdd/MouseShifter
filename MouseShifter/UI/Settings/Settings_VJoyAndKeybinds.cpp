@@ -56,11 +56,58 @@
             int listY = profileButtonRect.top + settingsScrollOffset + 35;
             int totalHeight = (listItemHeight + itemGap) * profileNames.size() + 8;
             RectF listRect((REAL)profileButtonRect.left, (REAL)listY, (REAL)profileButtonRect.right - profileButtonRect.left, (REAL)totalHeight);
-            DrawModernMenu(listRect, profileNames.size(), currentProfileIndex, hoveredProfileIndex, [&](size_t i) { 
+            
+            // Draw Background and border
+            GraphicsPath menuPath;
+            float menuRadius = 8.0f;
+            menuPath.AddArc(listRect.X, listRect.Y, menuRadius * 2, menuRadius * 2, 180, 90);
+            menuPath.AddArc(listRect.X + listRect.Width - menuRadius * 2, listRect.Y, menuRadius * 2, menuRadius * 2, 270, 90);
+            menuPath.AddArc(listRect.X + listRect.Width - menuRadius * 2, listRect.Y + listRect.Height - menuRadius * 2, menuRadius * 2, menuRadius * 2, 0, 90);
+            menuPath.AddArc(listRect.X, listRect.Y + listRect.Height - menuRadius * 2, menuRadius * 2, menuRadius * 2, 90, 90);
+            menuPath.CloseFigure();
+            SolidBrush menuBg(Color(245, 20, 20, 20));
+            graphics.FillPath(&menuBg, &menuPath);
+            graphics.DrawPath(&accentPen, &menuPath);
+
+            for (size_t i = 0; i < profileNames.size(); ++i) {
+                RectF itemRect(listRect.X + 4, listRect.Y + 4 + i * (listItemHeight + itemGap), listRect.Width - 8, (REAL)listItemHeight);
+                bool hovered = ((int)i == hoveredProfileIndex);
+                bool selected = (i == (size_t)currentProfileIndex);
+
+                if (hovered || selected) {
+                    GraphicsPath itemPath;
+                    float ir = 4.0f;
+                    itemPath.AddArc(itemRect.X, itemRect.Y, ir * 2, ir * 2, 180, 90);
+                    itemPath.AddArc(itemRect.X + itemRect.Width - ir * 2, itemRect.Y, ir * 2, ir * 2, 270, 90);
+                    itemPath.AddArc(itemRect.X + itemRect.Width - ir * 2, itemRect.Y + itemRect.Height - ir * 2, ir * 2, ir * 2, 0, 90);
+                    itemPath.AddArc(itemRect.X, itemRect.Y + itemRect.Height - ir * 2, ir * 2, ir * 2, 90, 90);
+                    itemPath.CloseFigure();
+                    graphics.FillPath(selected ? &accentBrush : &highlightBrush, &itemPath);
+                }
+
                 std::string p = profileNames[i];
                 if (p.size() > 4 && p.substr(p.size() - 4) == ".ini") p = p.substr(0, p.size() - 4);
-                return std::wstring(p.begin(), p.end());
-            });
+                std::wstring itemName(p.begin(), p.end());
+                
+                StringFormat itemF; itemF.SetLineAlignment(StringAlignmentCenter);
+                RectF textRect = itemRect; textRect.X += 10; textRect.Width -= 60; // leave room for icons
+                graphics.DrawString(itemName.c_str(), -1, &rowFont, textRect, &itemF, selected ? &darkBrush : &valueBrush);
+
+                // --- Action Icons (Clone & Delete) ---
+                float iconSize = 18.0f;
+                float iconY = itemRect.Y + (itemRect.Height - iconSize) / 2;
+                
+                // Clone Index (Duplicate)
+                RectF cloneIconRect(itemRect.X + itemRect.Width - 50, iconY, iconSize, iconSize);
+                bool cloneHover = (hoveredCloneIndex == (int)i);
+                graphics.DrawString(L"\x2302", -1, &rowFont, cloneIconRect, &itemF, cloneHover ? &accentBrush : &labelBrush); // Box icon as clone placeholder or ❐ (\x2750) 
+                
+                // Delete Icon
+                RectF deleteIconRect(itemRect.X + itemRect.Width - 25, iconY, iconSize, iconSize);
+                bool deleteHover = (hoveredDeleteIndex == (int)i);
+                static SolidBrush redBrush(Color(255, 80, 80));
+                graphics.DrawString(L"\x2715", -1, &rowFont, deleteIconRect, &itemF, deleteHover ? &redBrush : &labelBrush); // X symbol
+            }
         }
 
         // --- Tooltips (Must be drawn after dropdowns) ---

@@ -95,6 +95,16 @@ bool draggingSteeringDegreesSlider = false;
 bool draggingTransparencySlider = false;
 bool draggingYBarAlphaSlider = false;
 const float alphaDecay = 0.66f;
+
+// --- Modern UI State ---
+RECT g_modalActionRect;
+RECT g_modalCancelRect;
+int hoveredCloneIndex = -1;
+int hoveredDeleteIndex = -1;
+std::string hoveredKeybindGear = "";
+int hoveredInputIndex = -1;
+int hoveredToggleIndex = -1;
+
 // Add with other global variables
 extern HWND g_yBarHwnd;
 extern int yBarAlpha;

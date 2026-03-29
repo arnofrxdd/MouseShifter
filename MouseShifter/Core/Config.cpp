@@ -3,3 +3,4 @@
 #include "Core/Config/Config_Save.cpp"
 #include "Core/Config/Config_Load.cpp"
 #include "Core/Config/Config_Profiles_Mgr.cpp"
+#include "Core/Config/Config_Reset.cpp"

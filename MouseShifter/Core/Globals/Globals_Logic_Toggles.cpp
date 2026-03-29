@@ -179,5 +179,13 @@ bool assistButtonBeingSet = false;
 // Temporary to store new binding during input
 WORD newAssistButton = 0;
 
+// --- Reset System State ---
+bool showResetConfirmation = false;
+RECT resetAllButtonRect = { 0, 0, 0, 0 };
+std::string hoveredResetGear = "";
+std::map<std::string, RECT> gearResetBtnRects;
+int hoveredInputResetIndex = -1;
+std::map<int, RECT> inputResetBtnRects;
+
 
 #include "Core/System/Updater.h"

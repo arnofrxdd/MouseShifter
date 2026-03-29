@@ -1,13 +1,8 @@
 #include "Updater.h"
-
 //update system
-#include <windows.h>
 #include <string>
 #include <algorithm>
-#include <wininet.h>
-#include <shellapi.h>
 #include <cstdio>
-#pragma comment(lib, "wininet.lib")
 int CompareVersions(const std::string& a, const std::string& b)
 {
     int majA = 0, minA = 0, majB = 0, minB = 0;

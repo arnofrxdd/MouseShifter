@@ -1,4 +1,4 @@
-﻿    // --- Hotkey overlay ---
+    // --- Hotkey overlay ---
     // --- Hotkey overlay ---
 
     auto DrawHotkeyOverlay = [&](Graphics& g)

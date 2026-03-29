@@ -1,70 +1,88 @@
     if (showVJoyPicker && vJoyButtonCount > 0)
     {
-        int panelWidth = 300;  // wider window
-        int panelPadding = 20; // padding around buttons
-        int buttonHeight = 28; // button height
-        int buttonSpacing = 8; // space between buttons
-        int titleHeight = 35;
+        int columns = 4;
+        int rows = (vJoyButtonCount + columns - 1) / columns;
+        
+        int itemW = 85; 
+        int itemH = 40;
+        int gap = 10;
+        int padding = 20;
+        int titleHeight = 55;
 
-        int panelHeight = titleHeight + panelPadding + vJoyButtonCount * (buttonHeight + buttonSpacing) + panelPadding;
+        int panelWidth = columns * itemW + (columns - 1) * gap + 2 * padding;
+        int panelHeight = titleHeight + rows * itemH + (rows - 1) * gap + padding;
 
         RECT parentRect;
         GetClientRect(hwnd, &parentRect);
+        int left = (parentRect.right - panelWidth) / 2;
+        int top = (parentRect.bottom - panelHeight) / 2;
 
-        int left = max(0, (parentRect.right - panelWidth) / 2);
-        int top = max(0, (parentRect.bottom - panelHeight) / 2);
-
-        // Update global picker RECT
         g_vJoyPickerRect = { left, top, left + panelWidth, top + panelHeight };
+        RectF panelRectF((REAL)left, (REAL)top, (REAL)panelWidth, (REAL)panelHeight);
 
-        // GDI+ Rect for drawing
-        Gdiplus::Rect panelRectGDI(left, top, panelWidth, panelHeight);
+        // --- Dimmed Background ---
+        SolidBrush dimBrush(Color(200, 0, 0, 0));
+        graphics.FillRectangle(&dimBrush, 0, 0, parentRect.right, parentRect.bottom);
 
-        // --- Background ---
-        Gdiplus::SolidBrush bgBrush(Gdiplus::Color(40, 40, 40)); // dark gray
-        graphics.FillRectangle(&bgBrush, panelRectGDI);
+        // --- Picker Card ---
+        GraphicsPath cardPath;
+        float cr = 12.0f;
+        cardPath.AddArc(panelRectF.X, panelRectF.Y, cr * 2, cr * 2, 180, 90);
+        cardPath.AddArc(panelRectF.X + panelRectF.Width - cr * 2, panelRectF.Y, cr * 2, cr * 2, 270, 90);
+        cardPath.AddArc(panelRectF.X + panelRectF.Width - cr * 2, panelRectF.Y + panelRectF.Height - cr * 2, cr * 2, cr * 2, 0, 90);
+        cardPath.AddArc(panelRectF.X, panelRectF.Y + panelRectF.Height - cr * 2, cr * 2, cr * 2, 90, 90);
+        cardPath.CloseFigure();
+
+        SolidBrush cardBg(Color(255, 30, 30, 30));
+        graphics.FillPath(&cardBg, &cardPath);
+        graphics.DrawPath(&accentPen, &cardPath);
 
         // --- Title ---
-        Gdiplus::FontFamily fontFamily(L"Segoe UI");
-        Gdiplus::Font titleFont(&fontFamily, 18, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-        Gdiplus::SolidBrush titleBrush(Gdiplus::Color(0, 200, 136)); // accent color
-        Gdiplus::RectF titleRectF((Gdiplus::REAL)left, (Gdiplus::REAL)top + 5, (Gdiplus::REAL)panelWidth, (Gdiplus::REAL)titleHeight);
+        RectF titleRect(panelRectF.X, panelRectF.Y + 12, panelRectF.Width, 30);
+        StringFormat centerFormat;
+        centerFormat.SetAlignment(StringAlignmentCenter);
+        centerFormat.SetLineAlignment(StringAlignmentCenter);
+        graphics.DrawString(L"Select vJoy Button", -1, &headingFont, titleRect, &centerFormat, &accentBrush);
 
-        Gdiplus::StringFormat titleFormat;
-        titleFormat.SetAlignment(Gdiplus::StringAlignmentCenter);
-        titleFormat.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-        graphics.DrawString(L"Select vJoy Button", -1, &titleFont, titleRectF, &titleFormat, &titleBrush);
+        // Separator
+        graphics.DrawLine(&accentPen, panelRectF.X + 30, panelRectF.Y + 45, panelRectF.X + panelRectF.Width - 30, panelRectF.Y + 45);
 
-        // --- Buttons ---
+        // --- Grid Buttons ---
         g_vJoyButtonRects.clear();
-        Gdiplus::Font btnFont(&fontFamily, 14, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-        Gdiplus::SolidBrush btnTextBrush(Gdiplus::Color(220, 220, 220)); // light text
-
-        int btnX = left + panelPadding;
-        int btnW = panelWidth - 2 * panelPadding;
-        int btnYStart = top + titleHeight + panelPadding;
+        POINT cursor; GetCursorPos(&cursor); ScreenToClient(hwnd, &cursor);
+        
+        Font btnFont(L"Segoe UI", 13, FontStyleBold, UnitPixel);
 
         for (int i = 0; i < vJoyButtonCount; ++i)
         {
-            int btnY = btnYStart + i * (buttonHeight + buttonSpacing);
-
-            RECT btnRectWin = { btnX, btnY, btnX + btnW, btnY + buttonHeight };
+            int col = i % columns;
+            int row = i / columns;
+            
+            float bx = panelRectF.X + padding + col * (itemW + gap);
+            float by = panelRectF.Y + titleHeight + row * (itemH + gap);
+            
+            RectF btnRectF(bx, by, (REAL)itemW, (REAL)itemH);
+            RECT btnRectWin = { (int)bx, (int)by, (int)(bx + itemW), (int)(by + itemH) };
             g_vJoyButtonRects.push_back(btnRectWin);
 
-            Gdiplus::Rect btnRectGDI(btnX, btnY, btnW, buttonHeight);
-            Gdiplus::SolidBrush btnBrush(Gdiplus::Color(60, 60, 60));
-            graphics.FillRectangle(&btnBrush, btnRectGDI);
+            bool hovered = PtInRect(&btnRectWin, cursor);
+            
+            GraphicsPath bp;
+            float br = 6.0f;
+            bp.AddArc(btnRectF.X, btnRectF.Y, br * 2, br * 2, 180, 90);
+            bp.AddArc(btnRectF.X + btnRectF.Width - br * 2, btnRectF.Y, br * 2, br * 2, 270, 90);
+            bp.AddArc(btnRectF.X + btnRectF.Width - br * 2, btnRectF.Y + btnRectF.Height - br * 2, br * 2, br * 2, 0, 90);
+            bp.AddArc(btnRectF.X, btnRectF.Y + btnRectF.Height - br * 2, br * 2, br * 2, 90, 90);
+            bp.CloseFigure();
 
-            // --- Centered button text ---
-            wchar_t buf[32];
-            swprintf_s(buf, L"vJoy Btn %d", i + 1);
-            Gdiplus::RectF btnTextRectF((Gdiplus::REAL)btnRectGDI.X, (Gdiplus::REAL)btnRectGDI.Y,
-                (Gdiplus::REAL)btnRectGDI.Width, (Gdiplus::REAL)btnRectGDI.Height);
-            Gdiplus::StringFormat btnFormat;
-            btnFormat.SetAlignment(Gdiplus::StringAlignmentCenter);
-            btnFormat.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+            SolidBrush btnBrush(hovered ? Color(55, 55, 55) : Color(42, 42, 42));
+            graphics.FillPath(&btnBrush, &bp);
+            
+            Pen btnPen(hovered ? Color(0, 255, 170) : Color(65, 65, 65), hovered ? 1.5f : 1.0f);
+            graphics.DrawPath(&btnPen, &bp);
 
-            graphics.DrawString(buf, -1, &btnFont, btnTextRectF, &btnFormat, &btnTextBrush);
+            std::wstring numStr = std::to_wstring(i + 1);
+            graphics.DrawString(numStr.c_str(), -1, &btnFont, btnRectF, &centerFormat, hovered ? &accentBrush : &valueBrush);
         }
     }
     // --- Floating Update Button ---
@@ -98,6 +116,185 @@
 
         RectF rectF((REAL)updateButtonRect.left, (REAL)updateButtonRect.top, (REAL)buttonWidth, (REAL)buttonHeight);
         graphics.DrawString(L"Update available, click here", -1, &font, rectF, &format, &brush);
+    }
+
+    if (creatingNewProfile)
+    {
+        // --- Dimmed Background ---
+        Gdiplus::SolidBrush dimBrush(Gdiplus::Color(180, 0, 0, 0)); 
+        graphics.FillRectangle(&dimBrush, 0, 0, width, height);
+
+        int modalWidth = 400;
+        int modalHeight = 220;
+        int modalX = (width - modalWidth) / 2;
+        int modalY = (height - modalHeight) / 2;
+
+        RectF modalRect((REAL)modalX, (REAL)modalY, (REAL)modalWidth, (REAL)modalHeight);
+        
+        // --- Modal Card ---
+        GraphicsPath modalPath;
+        float mr = 12.0f;
+        modalPath.AddArc(modalRect.X, modalRect.Y, mr * 2, mr * 2, 180, 90);
+        modalPath.AddArc(modalRect.X + modalRect.Width - mr * 2, modalRect.Y, mr * 2, mr * 2, 270, 90);
+        modalPath.AddArc(modalRect.X + modalRect.Width - mr * 2, modalRect.Y + modalRect.Height - mr * 2, mr * 2, mr * 2, 0, 90);
+        modalPath.AddArc(modalRect.X, modalRect.Y + modalRect.Height - mr * 2, mr * 2, mr * 2, 90, 90);
+        modalPath.CloseFigure();
+
+        SolidBrush modalBg(Color(255, 35, 35, 35));
+        graphics.FillPath(&modalBg, &modalPath);
+        graphics.DrawPath(&accentPen, &modalPath);
+
+        // --- Title ---
+        StringFormat centerFormat;
+        centerFormat.SetAlignment(StringAlignmentCenter);
+        centerFormat.SetLineAlignment(StringAlignmentCenter);
+        
+        RectF titleRect(modalRect.X, modalRect.Y + 20, modalRect.Width, 30);
+        graphics.DrawString(L"Create New Profile", -1, &headingFont, titleRect, &centerFormat, &accentBrush);
+
+        // --- Input Field ---
+        float inputW = modalWidth - 60;
+        float inputH = 40;
+        float inputX = modalX + 30;
+        float inputY = modalY + 70;
+        RectF inputRect(inputX, inputY, inputW, inputH);
+
+        GraphicsPath inputPath;
+        float ir = 6.0f;
+        inputPath.AddArc(inputRect.X, inputRect.Y, ir * 2, ir * 2, 180, 90);
+        inputPath.AddArc(inputRect.X + inputRect.Width - ir * 2, inputRect.Y, ir * 2, ir * 2, 270, 90);
+        inputPath.AddArc(inputRect.X + inputRect.Width - ir * 2, inputRect.Y + inputRect.Height - ir * 2, ir * 2, ir * 2, 0, 90);
+        inputPath.AddArc(inputRect.X, inputRect.Y + inputRect.Height - ir * 2, ir * 2, ir * 2, 90, 90);
+        inputPath.CloseFigure();
+
+        graphics.FillPath(&darkBrush, &inputPath);
+        graphics.DrawPath(&accentPen, &inputPath);
+
+        std::wstring nameW(newProfileName.begin(), newProfileName.end());
+        RectF textRect = inputRect; textRect.X += 12; textRect.Width -= 24;
+        graphics.DrawString(nameW.c_str(), -1, &rowFont, textRect, &centerFormat, &valueBrush);
+
+        // --- Cursor ---
+        static DWORD lastBlink = GetTickCount();
+        static bool cursorVisible = true;
+        if (GetTickCount() - lastBlink > 500) { cursorVisible = !cursorVisible; lastBlink = GetTickCount(); }
+
+        if (cursorVisible) {
+            CharacterRange range(0, (int)profileTextSelectionStart);
+            StringFormat cursorFormat;
+            cursorFormat.SetFormatFlags(StringFormatFlagsMeasureTrailingSpaces);
+            cursorFormat.SetLineAlignment(StringAlignmentCenter);
+            cursorFormat.SetAlignment(StringAlignmentCenter);
+            cursorFormat.SetMeasurableCharacterRanges(1, &range);
+            
+            Region regions[1];
+            graphics.MeasureCharacterRanges(nameW.c_str(), -1, &rowFont, textRect, &cursorFormat, 1, regions);
+            RectF bounds;
+            if (regions[0].GetBounds(&bounds, &graphics) == Ok) {
+                graphics.FillRectangle(&accentBrush, bounds.GetRight(), bounds.Y + 8, 2.0f, bounds.Height - 16);
+            } else {
+                // If empty or measure failed, draw in center
+                graphics.FillRectangle(&accentBrush, inputRect.X + inputRect.Width/2, inputRect.Y + 10, 2.0f, inputRect.Height - 20);
+            }
+        }
+
+        // --- Buttons ---
+        float btnW = (modalWidth - 80) / 2;
+        float btnH = 35;
+        float btnY = modalY + 140;
+
+        auto DrawModalBtn = [&](float x, float y, float w, float h, const wchar_t* text, bool hovered, bool isPrimary) {
+            RectF r(x, y, w, h);
+            GraphicsPath bp;
+            float br_ = 6.0f;
+            bp.AddArc(r.X, r.Y, br_ * 2, br_ * 2, 180, 90);
+            bp.AddArc(r.X + r.Width - br_ * 2, r.Y, br_ * 2, br_ * 2, 270, 90);
+            bp.AddArc(r.X + r.Width - br_ * 2, r.Y + r.Height - br_ * 2, br_ * 2, br_ * 2, 0, 90);
+            bp.AddArc(r.X, r.Y + r.Height - br_ * 2, br_ * 2, br_ * 2, 90, 90);
+            bp.CloseFigure();
+            
+            if (isPrimary) {
+                graphics.FillPath(hovered ? &highlightBrush : &accentBrush, &bp);
+            } else {
+                graphics.FillPath(hovered ? &highlightBrush : &darkBrush, &bp);
+            }
+            graphics.DrawPath(&accentPen, &bp);
+            graphics.DrawString(text, -1, &rowFont, r, &centerFormat, (isPrimary && !hovered) ? &darkBrush : &valueBrush);
+            
+            return RECT{(int)x, (int)y, (int)(x+w), (int)(y+h)};
+        };
+
+        POINT cursor; GetCursorPos(&cursor); ScreenToClient(hwnd, &cursor);
+        
+        g_modalActionRect = DrawModalBtn(modalX + 30, btnY, btnW, btnH, L"Create", PtInRect(&g_modalActionRect, cursor), true);
+        g_modalCancelRect = DrawModalBtn(modalX + 50 + btnW, btnY, btnW, btnH, L"Cancel", PtInRect(&g_modalCancelRect, cursor), false);
+    }
+
+    if (showResetConfirmation)
+    {
+        // --- Dimmed Background ---
+        SolidBrush dimBrush(Color(200, 0, 0, 0));
+        graphics.FillRectangle(&dimBrush, 0, 0, width, height);
+
+        int modalWidth = 380;
+        int modalHeight = 180;
+        int modalX = (width - modalWidth) / 2;
+        int modalY = (height - modalHeight) / 2;
+
+        RectF modalRectF((REAL)modalX, (REAL)modalY, (REAL)modalWidth, (REAL)modalHeight);
+        
+        GraphicsPath modalPath;
+        float mr = 12.0f;
+        modalPath.AddArc(modalRectF.X, modalRectF.Y, mr * 2, mr * 2, 180, 90);
+        modalPath.AddArc(modalRectF.X + modalRectF.Width - mr * 2, modalRectF.Y, mr * 2, mr * 2, 270, 90);
+        modalPath.AddArc(modalRectF.X + modalRectF.Width - mr * 2, modalRectF.Y + modalRectF.Height - mr * 2, mr * 2, mr * 2, 0, 90);
+        modalPath.AddArc(modalRectF.X, modalRectF.Y + modalRectF.Height - mr * 2, mr * 2, mr * 2, 90, 90);
+        modalPath.CloseFigure();
+
+        SolidBrush modalBg(Color(255, 35, 35, 35));
+        graphics.FillPath(&modalBg, &modalPath);
+        graphics.DrawPath(&accentPen, &modalPath);
+
+        StringFormat centerAlign;
+        centerAlign.SetAlignment(StringAlignmentCenter);
+        centerAlign.SetLineAlignment(StringAlignmentCenter);
+
+        RectF titleRect(modalRectF.X, modalRectF.Y + 25, modalRectF.Width, 30);
+        graphics.DrawString(L"Reset All Keybindings?", -1, &headingFont, titleRect, &centerAlign, &accentBrush);
+
+        RectF msgRect(modalRectF.X + 20, modalRectF.Y + 60, modalRectF.Width - 40, 40);
+        SolidBrush subtitleBtnBrush(Color(180, 180, 180));
+        graphics.DrawString(L"This will revert all gears to their factory default buttons.", -1, &rowFont, msgRect, &centerAlign, &subtitleBtnBrush);
+
+        // Buttons
+        float btnW = (modalWidth - 80) / 2;
+        float btnH = 36;
+        float btnY = modalY + 120;
+
+        auto DrawResetModalBtn = [&](float x, float y, float w, float h, const wchar_t* text, bool hovered, bool isPrimary) {
+            RectF r(x, y, w, h);
+            GraphicsPath bp;
+            float br_ = 6.0f;
+            bp.AddArc(r.X, r.Y, br_ * 2, br_ * 2, 180, 90);
+            bp.AddArc(r.X + r.Width - br_ * 2, r.Y, br_ * 2, br_ * 2, 270, 90);
+            bp.AddArc(r.X + r.Width - br_ * 2, r.Y + r.Height - br_ * 2, br_ * 2, br_ * 2, 0, 90);
+            bp.AddArc(r.X, r.Y + r.Height - br_ * 2, br_ * 2, br_ * 2, 90, 90);
+            bp.CloseFigure();
+            
+            if (isPrimary) {
+                SolidBrush primaryBrush(Color(255, 180, 50, 50)); // Reddish for Reset
+                graphics.FillPath(hovered ? &highlightBrush : &primaryBrush, &bp);
+            } else {
+                graphics.FillPath(hovered ? &highlightBrush : &darkBrush, &bp);
+            }
+            graphics.DrawPath(&accentPen, &bp);
+            graphics.DrawString(text, -1, &rowFont, r, &centerAlign, &valueBrush);
+            return RECT{(int)x, (int)y, (int)(x+w), (int)(y+h)};
+        };
+
+        POINT cursor; GetCursorPos(&cursor); ScreenToClient(hwnd, &cursor);
+        g_modalActionRect = DrawResetModalBtn(modalX + 30, btnY, btnW, btnH, L"Yes, Reset", PtInRect(&g_modalActionRect, cursor), true);
+        g_modalCancelRect = DrawResetModalBtn(modalX + 50 + btnW, btnY, btnW, btnH, L"Cancel", PtInRect(&g_modalCancelRect, cursor), false);
     }
 
     if (!isBorderless)

@@ -2,6 +2,11 @@
 #include <string>
 #include <windows.h>
 
+#include <wininet.h>
+#include <shellapi.h>
+#pragma comment(lib, "wininet.lib")
+#pragma comment(lib, "shell32.lib")
+
 extern std::string currentVersion;
 extern bool updateAvailable;
 extern std::string latestVersion;

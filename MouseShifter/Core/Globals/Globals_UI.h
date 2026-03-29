@@ -112,6 +112,14 @@ enum RailType
     HORIZONTAL,
     VERTICAL
 };
+// --- Reset System State ---
+extern bool showResetConfirmation;
+extern RECT resetAllButtonRect;
+extern std::string hoveredResetGear;
+extern std::map<std::string, RECT> gearResetBtnRects; 
+extern int hoveredInputResetIndex;
+extern std::map<int, RECT> inputResetBtnRects;
+
 RailType currentRail = HORIZONTAL;
 
 int currentVerticalIndex = -1; // which vertical rail if on vertical

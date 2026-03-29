@@ -19,8 +19,8 @@ static DWORD lastRailRedrawTime = 0;
 #include "Input/Submodules/Input_RawMouse.cpp"
 #include "Input/Submodules/Input_XInputEngine.cpp"
 #include "Input/Submodules/Input_Pedals.cpp"
+#include "Core/Config.cpp"
 #include "Windows/WindowProc.cpp"
-}
 
 // ---------------- Main ----------------
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow)
@@ -122,5 +122,4 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow)
 
 // ==== EXTRACTED MODULES (UNITY BUILD) ====
 #include "Core/System/Updater.cpp"
-#include "Core/Config.cpp"
 #include "UI/Handlers/Transparency.cpp"

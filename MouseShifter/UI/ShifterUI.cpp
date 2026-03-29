@@ -1,5 +1,6 @@
 void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
 {
+    using namespace Gdiplus;
     RECT rc;
     GetClientRect(hwnd, &rc);
     int width = rc.right;
@@ -36,6 +37,22 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
     // --- Initialize GDI+ graphics on memory DC
     Gdiplus::Graphics graphics(memDC);
     graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+
+    // --- Modern Style Tokens (Shared across all handlers) ---
+    static Gdiplus::FontFamily fontFamily(L"Segoe UI");
+    static Gdiplus::Font titleFont(&fontFamily, 24, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    static Gdiplus::Font rowFont(&fontFamily, 14, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    static Gdiplus::Font headingFont(&fontFamily, 16, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    static Gdiplus::SolidBrush titleBrush(Gdiplus::Color(0, 255, 170));
+    static Gdiplus::SolidBrush labelBrush(Gdiplus::Color(240, 240, 240));
+    static Gdiplus::SolidBrush valueBrush(Gdiplus::Color(180, 180, 180));
+    static Gdiplus::SolidBrush accentBrush(Gdiplus::Color(0, 255, 170));
+    static Gdiplus::SolidBrush bgBrush(Gdiplus::Color(45, 45, 45));
+    static Gdiplus::SolidBrush darkBrush(Gdiplus::Color(25, 25, 25));
+    static Gdiplus::SolidBrush highlightBrush(Gdiplus::Color(40, 255, 255, 255));
+    static Gdiplus::Pen accentPen(Gdiplus::Color(0, 255, 170), 2);
+    static Gdiplus::Pen linePen(Gdiplus::Color(65, 65, 65), 1.0f);
+    static Gdiplus::Pen boxPen(Gdiplus::Color(0, 255, 170), 2);
 
     // Make the window semi-transparent and blurred
 // Windowed mode background

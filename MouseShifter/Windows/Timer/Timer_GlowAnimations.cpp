@@ -1,4 +1,4 @@
-﻿        // === UPDATE KEYBIND GLOW ANIMATIONS (ALWAYS PROCESS) ===
+        // === UPDATE KEYBIND GLOW ANIMATIONS (ALWAYS PROCESS) ===
         bool anyGlowAnimationChanged = false;
         DWORD currentTime = GetTickCount();
 
@@ -6,10 +6,20 @@
             auto& animation = kv.second;
             float oldAlpha = animation.glowAlpha;
 
-            if (animation.isHeld) {
-                // Key is held down - immediately go to full brightness and stay there
+            if (animation.isActive) {
+                // Fade in (regardless of isHeld)
+                float elapsed = (float)(currentTime - animation.activationTime);
+                animation.glowAlpha = min(MAX_GLOW_ALPHA, elapsed / GLOW_FADE_IN_TIME);
+
+                if (animation.glowAlpha >= MAX_GLOW_ALPHA) {
+                    animation.glowAlpha = MAX_GLOW_ALPHA;
+                    animation.isActive = false;
+                    animation.activationTime = currentTime;
+                }
+            }
+            else if (animation.isHeld) {
+                // Key is held down and already finished fade-in - stay at max
                 animation.glowAlpha = MAX_GLOW_ALPHA;
-                animation.isActive = false;
             }
             else {
                 // Key is not held - handle fade in/out

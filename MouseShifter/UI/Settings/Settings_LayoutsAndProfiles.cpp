@@ -105,8 +105,7 @@
 
         // Display current profile name
         std::string currentProfileDisplay;
-        if (creatingNewProfile) currentProfileDisplay = newProfileName;
-        else if (!profileNames.empty()) {
+        if (!profileNames.empty()) {
             currentProfileDisplay = profileNames[currentProfileIndex];
             if (currentProfileDisplay.size() > 4 && currentProfileDisplay.substr(currentProfileDisplay.size() - 4) == ".ini")
                 currentProfileDisplay = currentProfileDisplay.substr(0, currentProfileDisplay.size() - 4);
@@ -115,61 +114,7 @@
 
         std::wstring profileDisplayW(currentProfileDisplay.begin(), currentProfileDisplay.end());
         RectF profileTextRect = profileBoxRect; profileTextRect.X += 10; profileTextRect.Width -= 40;
-
-        if (creatingNewProfile) {
-            std::wstring profileNameW(newProfileName.begin(), newProfileName.end());
-            StringFormat format;
-            format.SetAlignment(StringAlignmentNear);
-            format.SetLineAlignment(StringAlignmentCenter); // Center vertically
-            format.SetFormatFlags(StringFormatFlagsNoClip | StringFormatFlagsNoWrap);
-
-            RectF fullTextBounds;
-            graphics.MeasureString(profileNameW.c_str(), -1, &rowFont, PointF(0, 0), &format, &fullTextBounds);
-
-            if (profileTextSelected && profileTextSelectionStart < profileTextSelectionEnd) {
-                CharacterRange ranges[2];
-                ranges[0] = CharacterRange(0, profileTextSelectionStart);
-                ranges[1] = CharacterRange(profileTextSelectionStart, profileTextSelectionEnd - profileTextSelectionStart);
-
-                StringFormat measureFormat;
-                measureFormat.SetFormatFlags(StringFormatFlagsMeasureTrailingSpaces);
-                measureFormat.SetLineAlignment(StringAlignmentCenter);
-                measureFormat.SetMeasurableCharacterRanges(2, ranges);
-
-                Region regions[2];
-                graphics.MeasureCharacterRanges(profileNameW.c_str(), -1, &rowFont, profileTextRect, &measureFormat, 2, regions);
-
-                RectF selectionBounds;
-                regions[1].GetBounds(&selectionBounds, &graphics);
-                SolidBrush selBrush(Color(0, 120, 215));
-                graphics.FillRectangle(&selBrush, selectionBounds);
-            }
-
-            graphics.DrawString(profileNameW.c_str(), -1, &rowFont, profileTextRect, &format, &labelBrush);
-
-            if (!profileTextSelected || profileTextSelectionStart == profileTextSelectionEnd) {
-                static DWORD lastBlink = GetTickCount();
-                static bool cursorVisible = true;
-                if (GetTickCount() - lastBlink > 500) { cursorVisible = !cursorVisible; lastBlink = GetTickCount(); }
-
-                if (cursorVisible) {
-                    CharacterRange range(0, profileTextSelectionStart);
-                    StringFormat cursorFormat;
-                    cursorFormat.SetFormatFlags(StringFormatFlagsMeasureTrailingSpaces);
-                    cursorFormat.SetLineAlignment(StringAlignmentCenter);
-                    cursorFormat.SetMeasurableCharacterRanges(1, &range);
-                    Region regions[1];
-                    graphics.MeasureCharacterRanges(profileNameW.c_str(), -1, &rowFont, profileTextRect, &cursorFormat, 1, regions);
-                    RectF bounds;
-                    if (regions[0].GetBounds(&bounds, &graphics) == Ok) {
-                        graphics.FillRectangle(&labelBrush, bounds.GetRight(), bounds.Y, 2.0f, bounds.Height);
-                    }
-                }
-            }
-        }
-        else {
-            graphics.DrawString(profileDisplayW.c_str(), -1, &rowFont, profileTextRect, &vertCenter, &valueBrush);
-        }
+        graphics.DrawString(profileDisplayW.c_str(), -1, &rowFont, profileTextRect, &vertCenter, &valueBrush);
 
         float pChevX = profileBoxRect.X + profileBoxRect.Width - 15;
         float pChevY = profileBoxRect.Y + profileBoxRect.Height / 2;
@@ -194,8 +139,7 @@
         graphics.FillPath(isHoveredCreate ? &accentBrush : &createIdleBrush, &createPath);
         graphics.DrawPath(&accentPen, &createPath);
 
-        std::wstring createButtonText = creatingNewProfile ? L"Type profile name and press Enter" : L"Create New Profile";
-        graphics.DrawString(createButtonText.c_str(), -1, &rowFont, createProfileBoxRect, &vertCenter, isHoveredCreate ? &darkBrush : &labelBrush);
+        graphics.DrawString(L"Create New Profile", -1, &rowFont, createProfileBoxRect, &vertCenter, isHoveredCreate ? &darkBrush : &labelBrush);
 
         // --- Mouse Device Selector ---
         currentY += toggleHeight + 50;

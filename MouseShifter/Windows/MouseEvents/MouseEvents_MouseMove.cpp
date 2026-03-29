@@ -68,7 +68,11 @@
         hoveredGearLayoutIndex = -1;
         hoveredHShifterLayoutIndex = -1;
         int prevProfileHover = hoveredProfileIndex; // Track previous hover state
+        int prevCloneHover = hoveredCloneIndex;
+        int prevDeleteHover = hoveredDeleteIndex;
         hoveredProfileIndex = -1; // Reset hover state
+        hoveredCloneIndex = -1;
+        hoveredDeleteIndex = -1;
         // Check for gear layout dropdown hover
         if (gearLayoutDropdownOpen)
         {
@@ -166,18 +170,106 @@
                     if (PtInRect(&itemRect, pt))
                     {
                         hoveredProfileIndex = (int)i;
+                        
+                        // Check icons
+                        RECT cloneBtn = { itemRect.right - 50, itemRect.top, itemRect.right - 30, itemRect.bottom };
+                        RECT deleteBtn = { itemRect.right - 25, itemRect.top, itemRect.right - 5, itemRect.bottom };
+
+                        if (PtInRect(&cloneBtn, pt)) hoveredCloneIndex = (int)i;
+                        else if (PtInRect(&deleteBtn, pt)) hoveredDeleteIndex = (int)i;
+                        
                         break;
                     }
                 }
             }
         }
+
+        // --- Right Panel Hover Detection ---
+        std::string prevHoverGear = hoveredKeybindGear;
+        std::string prevResetHover = hoveredResetGear;
+        int prevInputResetHover = hoveredInputResetIndex;
+        int prevHoverInput = hoveredInputIndex;
+        int prevHoverToggle = hoveredToggleIndex;
+        
+        hoveredKeybindGear = "";
+        hoveredResetGear = "";
+        hoveredInputResetIndex = -1;
+        hoveredInputIndex = -1;
+        hoveredToggleIndex = -1;
+        
+        if (showKeybindPanel)
+        {
+            RECT prHit = { (LONG)panelRect.X, (LONG)panelRect.Y, (LONG)(panelRect.X + panelRect.Width), (LONG)(panelRect.Y + panelRect.Height) };
+            if (PtInRect(&prHit, pt))
+            {
+                int rowHeight = 36;
+                int rowSpacing = 6;
+                int yStart = panelRect.Y + 70 + rightPanelScrollOffset;
+
+                std::vector<std::string> sortedKeys;
+                for (auto& kv : gearInputMap) sortedKeys.push_back(kv.first);
+                std::sort(sortedKeys.begin(), sortedKeys.end(), [&](const std::string& a, const std::string& b) {
+                    auto isNumber = [](const std::string& s) { if (s.empty()) return false; for (char c : s) if (!isdigit(c)) return false; return true; };
+                    bool aIsNum = isNumber(a); bool bIsNum = isNumber(b);
+                    if (aIsNum && bIsNum) return std::stoi(a) < std::stoi(b);
+                    if (aIsNum) return true; if (bIsNum) return false; return a < b;
+                });
+
+                int index = (pt.y - yStart) / (rowHeight + rowSpacing);
+                if (index >= 0 && index < (int)sortedKeys.size()) {
+                    std::string gear = sortedKeys[index];
+                    hoveredKeybindGear = gear;
+                    
+                    // Specific check for row reset button
+                    if (gearResetBtnRects.count(gear) && PtInRect(&gearResetBtnRects[gear], pt)) {
+                        hoveredResetGear = gear;
+                    }
+                }
+            }
+        }
+
+        if (showInputPanel)
+        {
+            int rowHeight = 36;
+            int rowSpacing = 6;
+            int yStart = (int)inputPanelRectUnified.Y + 10 + 28;
+            int index = (pt.y - yStart) / (rowHeight + rowSpacing);
+            if (index >= 0 && index < (int)inputMap.size() && pt.x >= inputPanelRectUnified.X && pt.x <= inputPanelRectUnified.X + inputPanelRectUnified.Width)
+            {
+                hoveredInputIndex = index;
+                if (inputResetBtnRects.count(index) && PtInRect(&inputResetBtnRects[index], pt)) {
+                    hoveredInputResetIndex = index;
+                }
+            }
+        }
+
+        if (showTogglePanel)
+        {
+            if (PtInRect(&g_toggleKeyRect, pt)) hoveredToggleIndex = 0;
+            else if (PtInRect(&g_assistButtonRect, pt)) hoveredToggleIndex = 1;
+            else if (PtInRect(&reverseUnlockKeyRect, pt)) hoveredToggleIndex = 2;
+        }
+
         // Redraw if hover state changed
         bool needRedraw = (prevGearHover != hoveredGearLayoutIndex) ||
             (prevHShifterHover != hoveredHShifterLayoutIndex) ||
-            (prevProfileHover != hoveredProfileIndex); // Add this comparison
+            (prevProfileHover != hoveredProfileIndex) ||
+            (prevCloneHover != hoveredCloneIndex) ||
+            (prevDeleteHover != hoveredDeleteIndex) ||
+            (prevHoverGear != hoveredKeybindGear) ||
+            (prevResetHover != hoveredResetGear) ||
+            (prevInputResetHover != hoveredInputResetIndex) ||
+            (prevHoverInput != hoveredInputIndex) ||
+            (prevHoverToggle != hoveredToggleIndex) ||
+            PtInRect(&resetAllButtonRect, pt); // Also redraw for Reset All highlight
+
+        if (creatingNewProfile || showVJoyPicker || showResetConfirmation) {
+            // Modal overlays redraw on every move for responsive hover
+            needRedraw = true; 
+        }
 
         if (needRedraw) {
-            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            InvalidateRect(hwnd, NULL, FALSE);
         }
 
         // --- Registry-based Dragging ---

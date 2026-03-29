@@ -1,6 +1,11 @@
 #include "UI/Handlers/Transparency.h"
+static std::string lastSetGear = "";
+
 void SetGearKey(std::string gear)
 {
+    if (gear == lastSetGear) return; // Prevent re-triggering if already in this gear
+    lastSetGear = gear;
+
     if (gearInputMap.find(gear) == gearInputMap.end())
         return;
 
@@ -59,17 +64,18 @@ void SetGearKey(std::string gear)
     // === START GLOW ANIMATION FOR THIS GEAR ===
     if (keybindAnimations.find(gear) == keybindAnimations.end()) {
         keybindAnimations[gear] = KeybindAnimation();
+        keybindAnimations[gear].glowAlpha = 0.0f; // Start at 0 for fade in
     }
-    // FIX: Only set isHeld = true, NOT isActive = true
-    keybindAnimations[gear].isHeld = true;
-    keybindAnimations[gear].isActive = false; // Make sure active is false
-    keybindAnimations[gear].glowAlpha = MAX_GLOW_ALPHA; // Immediate full brightness
+    
+    keybindAnimations[gear].isActive = true;  // Trigger fade-in
+    keybindAnimations[gear].isHeld = true;    // Ensure it stays at max alpha
     keybindAnimations[gear].activationTime = GetTickCount();
 }
 
 // Call this on every WM_INPUT update
 void ReleaseGearKey()
 {
+    lastSetGear = ""; // Reset change detection
     if (heldGearKey != 0)
     {
         if (heldGearType == KEYBOARD)

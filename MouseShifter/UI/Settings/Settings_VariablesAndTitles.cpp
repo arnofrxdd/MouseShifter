@@ -12,21 +12,7 @@ if (showSettingsPanel)
     POINT itemAdjCursor = { cursor.x, cursor.y - settingsScrollOffset };
     bool anyDropdownOpen = profileDropdownOpen || gearLayoutDropdownOpen || hShifterLayoutDropdownOpen;
 
-    // --- Style Tokens (No Hardcoding) ---
-    static FontFamily fontFamily(L"Segoe UI");
-    static Font titleFont(&fontFamily, 24, FontStyleBold, UnitPixel);
-    static Font rowFont(&fontFamily, 14, FontStyleRegular, UnitPixel);
-    static Font headingFont(&fontFamily, 16, FontStyleBold, UnitPixel);
-    static SolidBrush titleBrush(Color(0, 255, 170)); // More vibrant teal-green
-    static SolidBrush labelBrush(Color(240, 240, 240));
-    static SolidBrush valueBrush(Color(180, 180, 180));
-    static SolidBrush accentBrush(Color(0, 255, 170));
-    static SolidBrush bgBrush(Color(45, 45, 45));
-    static SolidBrush darkBrush(Color(25, 25, 25));
-    static SolidBrush highlightBrush(Color(40, 255, 255, 255)); // Hover highlight
-    static Pen accentPen(Color(0, 255, 170), 2);
-    static Pen linePen(Color(65, 65, 65), 1.0f);
-    static Pen boxPen(Color(0, 255, 170), 2);
+    // --- Style Tokens are inherited from ShifterUI.cpp ---
 
     int currentY = 120;
     int margin = 20;

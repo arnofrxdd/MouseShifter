@@ -11,19 +11,36 @@
             createProfileButtonRect.bottom + settingsScrollOffset
         };
 
+        RECT clientRect;
+        GetClientRect(hwnd, &clientRect);
+        int width = clientRect.right;
+        int height = clientRect.bottom;
+
         if (creatingNewProfile) {
-            // Check if click is NOT in the profile creation area
-            if (!PtInRect(&adjustedProfileButtonRect, pt) && !PtInRect(&adjustedCreateProfileButtonRect, pt)) {
-                // Clicked outside profile creation area - create the profile
+            // Check Modal Buttons
+            if (PtInRect(&g_modalActionRect, pt)) {
                 if (!newProfileName.empty()) {
                     CreateNewProfile(hwnd);
                 }
                 creatingNewProfile = false;
-                profileTextSelected = false;
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-                return 0; // Block further processing
+                InvalidateRect(hwnd, NULL, FALSE);
+                return 0;
             }
-            // If click is inside profile creation area, continue with normal processing
+            if (PtInRect(&g_modalCancelRect, pt)) {
+                creatingNewProfile = false;
+                newProfileName = "New Profile";
+                InvalidateRect(hwnd, NULL, FALSE);
+                return 0;
+            }
+
+            // Clicked outside modal - ignore or close? Let's close for UX.
+            // (Modal is usually 400x220 in middle)
+            RECT modalR = { (width - 400) / 2, (height - 220) / 2, (width + 400) / 2, (height + 220) / 2 };
+            if (!PtInRect(&modalR, pt)) {
+                creatingNewProfile = false;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            return 0; // Block all other clicks while modal is open
         }
 
         // Process button clicks
@@ -39,7 +56,7 @@
             newProfileName = "New Profile";
             profileTextSelected = true;
             profileTextSelectionStart = 0;
-            profileTextSelectionEnd = newProfileName.length();
-            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            profileTextSelectionEnd = (int)newProfileName.length();
+            InvalidateRect(hwnd, NULL, FALSE);
             return 0;
         }
