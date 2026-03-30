@@ -59,6 +59,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
 
 #include "Handlers/WindowProc_Input.cpp"
+    case WM_INPUT_DEVICE_CHANGE:
+    {
+        RefreshMouseDeviceList(hwnd);
+        InvalidateRect(hwnd, NULL, FALSE);
+        break;
+    }
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
         // Handle gear keybind
@@ -341,16 +347,46 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEWHEEL:
     {
         POINT pt;
-        GetCursorPos(&pt);           // get mouse position in screen coords
-        ScreenToClient(hwnd, &pt);   // convert to client coords
+        GetCursorPos(&pt);           
+        ScreenToClient(hwnd, &pt);   
 
-        // Only scroll if mouse is inside the settings panel
+        // 1. Layout Gallery Scrolling (Highest Priority Overlay)
+        if (showLayoutGallery)
+        {
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            layoutGalleryScrollTarget += delta; 
+            
+            // Note: Bounds clamping will be handled dynamically in ShifterUI_LayoutGallery.cpp
+            // since the max scroll depends on grid size and window height.
+            if (layoutGalleryScrollTarget > 0) layoutGalleryScrollTarget = 0; 
+            
+            InvalidateRect(hwnd, NULL, FALSE);
+            break;
+        }
+
+        // 2. Process Picker Scrolling
+        if (processPickerModalOpen) {
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            processPickerScrollTarget += delta;
+            
+            int listItemHeightP = 35;
+            int totalH = (int)(g_processList.size() * listItemHeightP);
+            int viewportH = 300; // matching listRect.Height from TopDropdowns
+            int maxScroll = max(0, totalH - viewportH);
+            
+            if (processPickerScrollTarget < -maxScroll) processPickerScrollTarget = (float)-maxScroll;
+            if (processPickerScrollTarget > 0) processPickerScrollTarget = 0;
+            
+            InvalidateRect(hwnd, NULL, FALSE);
+            break;
+        }
+
+        // 2. Settings Panel Scrolling
         if (PtInRect(&settingsPanelRect, pt))
         {
-            int delta = GET_WHEEL_DELTA_WPARAM(wParam); // ±120
-            settingsScrollTarget += delta / 2.0f;       // adjust scroll speed
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam); 
+            settingsScrollTarget += delta / 2.0f;       
 
-            // Clamp target
             if (settingsScrollTarget < -settingsScrollMax)
                 settingsScrollTarget = -settingsScrollMax;
             if (settingsScrollTarget > 0)
@@ -358,20 +394,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             InvalidateRect(hwnd, &settingsPanelRect, FALSE);
         }
-        // Handle scrolling for the right panel (Keybind, Input, Toggle)
+        // 3. Right Panel Scrolling
         else if (pt.x >= (int)panelRect.X && pt.x <= (int)(panelRect.X + panelRect.Width) &&
                  pt.y >= (int)panelRect.Y && pt.y <= (int)(panelRect.Y + panelRect.Height))
         {
             int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            rightPanelScrollTarget += delta; // More aggressive: full delta instead of delta / 2.0f
+            rightPanelScrollTarget += delta; 
 
-            // Clamp target
             if (rightPanelScrollTarget < -rightPanelScrollMax)
                 rightPanelScrollTarget = -rightPanelScrollMax;
             if (rightPanelScrollTarget > 0)
                 rightPanelScrollTarget = 0;
 
-            InvalidateRect(hwnd, NULL, FALSE); // Redraw the whole right side area
+            InvalidateRect(hwnd, NULL, FALSE); 
         }
     }
     break;

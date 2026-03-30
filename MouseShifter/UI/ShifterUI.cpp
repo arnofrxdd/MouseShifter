@@ -69,9 +69,13 @@ void DrawShifterGDIPlus(HWND hwnd, HDC hdc)
     }
 
 #include "Handlers/ShifterUI_Drawing.cpp"
+    // Draw Navigation Dock & Dropdowns (Background for modals)
+#include "Components/ShifterUI_TopNavBar.cpp"
 #include "Handlers/ShifterUI_SidePanels.cpp"
 #include "Handlers/ShifterUI_Settings.cpp"
 #include "Handlers/ShifterUI_Overlays.cpp"
+#include "Components/ShifterUI_TopDropdowns.cpp"
+    
     BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
 
     // --- Cleanup ---

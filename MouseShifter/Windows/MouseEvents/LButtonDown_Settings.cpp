@@ -8,12 +8,10 @@
             if (PtInRect(&r, pt))
             {
                 RefreshProcessList();
-                if (!g_processList.empty()) {
-                    static size_t currentIndex = 0;
-                    currentIndex = (currentIndex + 1) % g_processList.size();
-                    g_selectedProcessId = g_processList[currentIndex];
-                }
-                InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+                processPickerModalOpen = true;
+                processPickerScrollTarget = 0;
+                processPickerScrollOffset = 0;
+                InvalidateRect(hwnd, NULL, FALSE);
                 return 0;
             }
 

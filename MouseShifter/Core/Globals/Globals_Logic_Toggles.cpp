@@ -187,5 +187,18 @@ std::map<std::string, RECT> gearResetBtnRects;
 int hoveredInputResetIndex = -1;
 std::map<int, RECT> inputResetBtnRects;
 
+// --- Visual Layout Gallery ---
+float layoutGalleryScrollOffset = 0.0f;
+float layoutGalleryScrollTarget = 0.0f;
+RECT layoutGalleryModalRect = { 0, 0, 0, 0 };
+
+// --- Top Navigation Bar (Pill) ---
+RECT topNavBarRect = { 0, 0, 0, 0 };
+RECT gearCountToggleRect = { 0, 0, 0, 0 };
+RECT topProfileBtnRect = { 0, 0, 0, 0 };
+RECT topNewProfileBtnRect = { 0, 0, 0, 0 };
+RECT topGearLabelBtnRect = { 0, 0, 0, 0 };
+RECT topLayoutBtnRect = { 0, 0, 0, 0 };
+
 
 #include "Core/System/Updater.h"

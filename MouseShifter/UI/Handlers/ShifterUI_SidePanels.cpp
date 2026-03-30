@@ -15,7 +15,7 @@
         // --- Pulse Animation Factor ---
         float pulse = (sin(GetTickCount() * 0.006f) + 1.0f) / 2.0f; // Smooth pulse 0.0 to 1.0
 
-        SolidBrush titleBrush(Color(0, 255, 136));
+        SolidBrush titleBrush(Color(0, 255, 170));
         SolidBrush subtitleBrush(Color(180, 180, 180));
         SolidBrush textBrush(Color(220, 220, 220));
 
@@ -64,13 +64,13 @@
             resetPath.AddArc(resetAllRectF.X, resetAllRectF.Y + resetAllRectF.Height - rr * 2, rr * 2, rr * 2, 90, 90);
             resetPath.CloseFigure();
 
-            // Premium Gradient/Color for Reset All
-            Color crimsonStart = resetAllHover ? Color(255, 120, 40, 40) : Color(255, 60, 20, 20);
-            Color crimsonEnd = resetAllHover ? Color(255, 80, 20, 20) : Color(255, 40, 10, 10);
-            LinearGradientBrush resetBrush(resetAllRectF, crimsonStart, crimsonEnd, LinearGradientModeVertical);
+            // Premium Accent/Linear Gradient for Reset All
+            Color accentRedStart = resetAllHover ? Color(200, 80, 40, 40) : Color(180, 40, 20, 20);
+            Color accentRedEnd = resetAllHover ? Color(200, 50, 10, 10) : Color(180, 20, 5, 5);
+            LinearGradientBrush resetBrush(resetAllRectF, accentRedStart, accentRedEnd, LinearGradientModeVertical);
             
             graphics.FillPath(&resetBrush, &resetPath);
-            Pen resetPen(resetAllHover ? Color(255, 255, 100, 100) : Color(255, 180, 60, 60), 1.0f);
+            Pen resetPen(resetAllHover ? Color(200, 0, 255, 170) : Color(100, 0, 255, 170), 1.0f); // Teal border for consistency
             graphics.DrawPath(&resetPen, &resetPath);
             
             // Text with icon
@@ -210,7 +210,7 @@
                 gearResetBtnRects[gear] = { (int)resetX, (int)resetY, (int)(resetX + 26), (int)(resetY + 26) };
 
                 bool rowResetHover = (hoveredResetGear == gear);
-                SolidBrush resetIconBrush(rowResetHover ? Color(255, 255, 100, 100) : Color(255, 100, 100, 100));
+                SolidBrush resetIconBrush(rowResetHover ? Color(255, 255, 80, 80) : Color(120, 150, 150, 150)); // Muted gray by default
                 graphics.DrawString(L"\x21BB", -1, &rowFont, resetBtnRectF, &centerAlign, &resetIconBrush);
 
                 y += rowHeight + rowSpacing;
@@ -304,7 +304,7 @@
                 inputResetBtnRects[(int)i] = { (int)resetX, (int)resetY, (int)(resetX + 26), (int)(resetY + 26) };
 
                 bool rowResetHover = (hoveredInputResetIndex == (int)i);
-                SolidBrush resetIconBrush(rowResetHover ? Color(255, 255, 100, 100) : Color(255, 100, 100, 100));
+                SolidBrush resetIconBrush(rowResetHover ? Color(255, 255, 80, 80) : Color(120, 150, 150, 150)); // Muted gray by default
                 graphics.DrawString(L"\x21BB", -1, &rowFont, resetBtnRectF, &centerAlign, &resetIconBrush);
 
                 yInput += rowHeight + rowSpacing;

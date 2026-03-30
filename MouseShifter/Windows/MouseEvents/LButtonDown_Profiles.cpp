@@ -1,18 +1,4 @@
-        RECT adjustedProfileButtonRect = {
-            profileButtonRect.left,
-            profileButtonRect.top + settingsScrollOffset,
-            profileButtonRect.right,
-            profileButtonRect.bottom + settingsScrollOffset
-        };
-        RECT adjustedCreateProfileButtonRect = {
-            createProfileButtonRect.left,
-            createProfileButtonRect.top + settingsScrollOffset,
-            createProfileButtonRect.right,
-            createProfileButtonRect.bottom + settingsScrollOffset
-        };
-
-        RECT clientRect;
-        GetClientRect(hwnd, &clientRect);
+        RECT clientRect; GetClientRect(hwnd, &clientRect);
         int width = clientRect.right;
         int height = clientRect.bottom;
 
@@ -34,7 +20,6 @@
             }
 
             // Clicked outside modal - ignore or close? Let's close for UX.
-            // (Modal is usually 400x220 in middle)
             RECT modalR = { (width - 400) / 2, (height - 220) / 2, (width + 400) / 2, (height + 220) / 2 };
             if (!PtInRect(&modalR, pt)) {
                 creatingNewProfile = false;
@@ -44,19 +29,9 @@
         }
 
         // Process button clicks
-        if (PtInRect(&adjustedProfileButtonRect, pt)) {
+        if (PtInRect(&topProfileBtnRect, pt)) {
             RefreshProfilesList();
             profileDropdownOpen = true;
-            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
-            return 0;
-        }
-
-        if (PtInRect(&adjustedCreateProfileButtonRect, pt)) {
-            creatingNewProfile = true;
-            newProfileName = "New Profile";
-            profileTextSelected = true;
-            profileTextSelectionStart = 0;
-            profileTextSelectionEnd = (int)newProfileName.length();
-            InvalidateRect(hwnd, NULL, FALSE);
+            InvalidateRect(hwnd, NULL, FALSE); // Redraw for dropdown overlay
             return 0;
         }

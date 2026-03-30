@@ -329,4 +329,8 @@
     // --- Draw overlay if not borderless ---
     if (!isBorderless)
         DrawHotkeyOverlay(graphics);
+        
+    // --- Visual Shifter Layout Gallery (Absolute Highest Priority) ---
+    #include "UI/Overlays/ShifterUI_LayoutGallery.cpp"
+
     // --- Blit the offscreen bitmap to the window DC ---

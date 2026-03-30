@@ -112,6 +112,22 @@ enum RailType
     HORIZONTAL,
     VERTICAL
 };
+
+// --- Visual Layout Gallery ---
+// --- Visual Layout Gallery ---
+extern bool showLayoutGallery;
+extern std::vector<RECT> layoutGalleryItemRects;
+extern RECT layoutGalleryModalRect;
+extern float layoutGalleryScrollOffset;
+extern float layoutGalleryScrollTarget;
+// --- Top Navigation Bar (Pill) ---
+extern RECT topNavBarRect;
+extern RECT gearCountToggleRect;
+extern RECT topProfileBtnRect;
+extern RECT topNewProfileBtnRect;
+extern RECT topGearLabelBtnRect;
+extern RECT topLayoutBtnRect;
+
 // --- Reset System State ---
 extern bool showResetConfirmation;
 extern RECT resetAllButtonRect;

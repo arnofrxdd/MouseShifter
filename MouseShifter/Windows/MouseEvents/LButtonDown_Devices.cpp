@@ -65,28 +65,10 @@
             r = GetScrolledRect(deviceComboRect);
             if (PtInRect(&r, pt))
             {
-                size_t idx = 0;
-                if (g_selectedDevice)
-                {
-                    for (size_t i = 0; i < g_mouseDevices.size(); ++i)
-                    {
-                        if (g_mouseDevices[i].hDevice == g_selectedDevice)
-                        {
-                            idx = i + 1;
-                            break;
-                        }
-                    }
-                }
-                if (idx >= g_mouseDevices.size())
-                {
-                    g_selectedDevice = NULL; // All Mice
-                }
-                else
-                {
-                    g_selectedDevice = g_mouseDevices[idx].hDevice;
-                }
-
-                InvalidateRect(hwnd, &settingsPanelRect, TRUE); // redraw
+                mouseDeviceDropdownOpen = true;
+                steeringDeviceDropdownOpen = false;
+                InvalidateRect(hwnd, NULL, FALSE);
+                return 0;
             }
             r = GetScrolledRect(gamepadComboRect);
             if (PtInRect(&r, pt)) // `pt` is mouse click position
@@ -103,32 +85,10 @@
             r = GetScrolledRect(steeringDeviceComboRect);
             if (PtInRect(&r, pt))
             {
-                size_t index = 0;
-                if (g_selectedSteeringDevice)
-                {
-                    for (index = 0; index < g_mouseDevices.size(); index++)
-                    {
-                        if (g_mouseDevices[index].hDevice == g_selectedSteeringDevice)
-                        {
-                            break;
-                        }
-                    }
-                    index = (index + 1) % (g_mouseDevices.size() + 1); // +1 for "All Mice"
-                }
-                else
-                {
-                    index = 0; // start at first device if currently on "All Mice"
-                }
-
-                if (index < g_mouseDevices.size())
-                {
-                    g_selectedSteeringDevice = g_mouseDevices[index].hDevice;
-                }
-                else
-                {
-                    g_selectedSteeringDevice = NULL; // "All Mice"
-                }
-                InvalidateRect(hwnd, nullptr, FALSE);
+                steeringDeviceDropdownOpen = true;
+                mouseDeviceDropdownOpen = false;
+                InvalidateRect(hwnd, NULL, FALSE);
+                return 0;
             }
             r = GetScrolledRect(gearLayoutButtonRect);
             if (PtInRect(&r, pt))

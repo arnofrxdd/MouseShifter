@@ -1,6 +1,8 @@
 #include <map>
 #include <Windows.h>
 bool showVJoyPicker = false;
+bool showLayoutGallery = false;
+std::vector<RECT> layoutGalleryItemRects;
 std::string vJoyPickerGear;
 RECT vJoyPickerRect = { 0 };
 int vJoyButtonCount = 0; // detected at startup

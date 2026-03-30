@@ -39,7 +39,7 @@ if (showSettingsPanel)
 
         // --- 2. Shifter Configuration Toggles ---
         g_settingsRegistry.push_back({ SettingType::HEADING, L"H-Shifter Settings", L"", nullptr, 0, 0, 0, L"", {}, {}, -1 });
-        g_settingsRegistry.push_back({ SettingType::TOGGLE, L"16-Gear Set", L"Enable 16-gear layout (5 rails) instead of 12-gear (4 rails).", &is16GearSet, 0, 0, 0, L"", {}, {}, 66 });
+        // 16-Gear Set moved to Top Nav Bar
         g_settingsRegistry.push_back({ SettingType::TOGGLE, L"Enable Neutral", L"Enables neutral key binding.", &isNeutralEnabled, 0, 0, 1.0f, L"", {}, {}, 7 });
         g_settingsRegistry.push_back({ SettingType::TOGGLE, L"Hide High Gears", L"Hides high gear labeling.", &hideHighGears, 0, 0, 0, L"", {}, {}, 8 });
         g_settingsRegistry.push_back({ SettingType::TOGGLE, L"Precision Knob Move", L"Enables precision mode for knob movement.", &knobAccelerationEnabled, 0, 0, 0, L"", {}, {}, 9 });

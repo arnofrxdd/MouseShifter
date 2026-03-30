@@ -108,3 +108,12 @@ int hoveredToggleIndex = -1;
 // Add with other global variables
 extern HWND g_yBarHwnd;
 extern int yBarAlpha;
+
+bool mouseDeviceDropdownOpen = false;
+bool steeringDeviceDropdownOpen = false;
+bool gamepadDropdownOpen = false;
+bool processPickerModalOpen = false;
+float processPickerScrollOffset = 0.0f;
+float processPickerScrollTarget = 0.0f;
+int hoveredProcessIndex = -1;
+RECT processPickerBoxRect = { 0 };
