@@ -1,6 +1,41 @@
         int mouseX = GET_X_LPARAM(lParam);
         int mouseY = GET_Y_LPARAM(lParam);
         POINT pt = { mouseX, mouseY };
+
+        // --- 0. Registry-based Slider Dragging ---
+        if (g_draggingElement)
+        {
+            float trackWidth = (float)(g_draggingElement->rect.right - g_draggingElement->rect.left);
+            float t = (float)(mouseX - g_draggingElement->rect.left) / trackWidth;
+            t = max(0.0f, min(1.0f, t));
+            
+            float newVal = g_draggingElement->minVal + t * (g_draggingElement->maxVal - g_draggingElement->minVal);
+            
+            if (g_draggingElement->type == SettingType::SLIDER_INT) *(int*)g_draggingElement->valuePtr = (int)newVal;
+            else if (g_draggingElement->type == SettingType::SLIDER_BYTE) *(unsigned char*)g_draggingElement->valuePtr = (unsigned char)newVal;
+            else *(float*)g_draggingElement->valuePtr = newVal;
+
+            // Specialized update logic (matching LButtonDown_Settings.cpp reset logic)
+            if (g_draggingElement->label == L"Gear Radius" || g_draggingElement->label == L"Snap Sensitivity") {
+                gearSnapInThreshold = int(gearRadius * gearSnapInMultiplier);
+                ComputeIntersections();
+            }
+            if (g_draggingElement->label == L"Diagonal Assist Strength") {
+                enterVerticalThreshold = int(baseEnterVerticalThreshold * diagonalAssist);
+                for (auto& inter : intersections) inter.radius = int(baseIntersectionRadius * diagonalAssist);
+            }
+            if (g_draggingElement->label == L"H-Shifter Size") {
+                ComputeLayout(hwnd);
+                ComputeIntersections();
+            }
+            if (g_draggingElement->label == L"Max Steering Degrees") {
+				// No extra logic needed for this one, but it was mentioned in legacy
+			}
+
+            InvalidateRect(hwnd, &settingsPanelRect, FALSE);
+            return 0; // Exit MouseMove early while dragging
+        }
+
         POINT itemAdjCursor = { mouseX, mouseY - settingsScrollOffset };
 
         // --- 1. Update Hover States for Right Side Panel ---

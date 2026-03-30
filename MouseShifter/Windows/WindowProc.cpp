@@ -208,6 +208,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_CAPTURECHANGED:
     {
         // If capture was lost for any reason, stop all dragging
+        g_draggingElement = nullptr;
         draggingKnobSlider = false;
         draggingSensSlider = false;
         draggingDiagSlider = false;
