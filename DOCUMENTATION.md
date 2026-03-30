@@ -94,7 +94,7 @@ All files here define **global variables** shared across the entire codebase. Be
 | `Globals_Logic_DirectInput.cpp` | Defines `InitDirectInput()` and `PollDirectInput()`. Opens DirectInput8, enumerates joystick devices to find pedal axes, reads full `DIJOYSTATE2` on each poll so clutch/brake/accelerator values are available for toggle logic. |
 | `Globals_Logic_ReverseLock.cpp` | Implements the reverse-lock boundary system: `IsReverseUnlockActive_Fix()`, `ClampMovementForReverseLock_Fix()`, `ClampHorizontalMovementForReverseLock_Fix()`, `EnforceReverseLockBoundary()`. Prevents the knob from entering the reverse gear slot unless the configured unlock input is actively held. |
 | `Globals_Logic_Toggles.cpp` | Implements `IsKnobToggleActive()` and `IsReverseUnlockActive()`. Both switch on `ToggleType` enum and return whether the user holds the configured input (keyboard key, pedal axis spike, or mouse button). Also defines toggle panel UI state RECTs (`togglePanelRect`, `inputPanelRectUnified`) and booleans (`vJoyMouseEnabled`, `showYBar`, `showXBar`, `assistButton`). |
-| `Globals_Logic_Misc.cpp` | The bootstrap glue fragment. Implements `processAllFiles()` (reads ATS/ETS2 Documents INI files and injects/reverts mouse steering config lines), the full `hShifterLayouts` preset list, and `layoutType`. `#include`s `FileBackup.cpp`, `VJoySetup.cpp`, `MouseInput.cpp`, and `LayoutComputations.cpp` to pull them into the unity build chain. |
+| `Globals_Logic_Misc.cpp` | The bootstrap glue fragment. Implements `processAllFiles()` (reads ATS/ETS2 Documents INI files and injects/reverts mouse steering config lines). `#include`s `FileBackup.cpp`, `VJoySetup.cpp`, `MouseInput.cpp`, and `LayoutComputations.cpp` to pull them into the unity build chain. |
 
 ---
 
@@ -190,9 +190,9 @@ All files here define **global variables** shared across the entire codebase. Be
 | `LButtonDown_Dropdowns.cpp` | Handles left-click on the gear-layout type dropdown and the H-Shifter layout dropdown. Opens/closes dropdowns, applies the selected `layoutType`, calls `ComputeLayout()`. |
 | `LButtonDown_Panels.cpp` | Handles left-click on panel toggle buttons (Settings, Keybind, Input, Toggle), close/minimize title bar buttons, and the drag-area grab handle in borderless mode. |
 | `LButtonDown_Profiles.cpp` | Handles left-click on profile management UI rows: create, rename, delete, and switch active profile buttons. Triggers `CreateProfile()` / `SwitchProfile()` / etc. |
-| `LButtonDown_Settings.cpp` | Handles left-click on all slider drag initiation and toggle checkbox presses in the Settings panel (knob radius, sensitivities, snap speed, diagonal, layout scale, all toggle booleans). |
-| `MouseEvents_MouseMove.cpp` | Handles `WM_MOUSEMOVE` for active slider drag operations (knob radius, sensitivity, snap speed, diagonal, layout scale, transparency sliders, scroll clutch speed, controller sensitivity, steering sensitivity, max steering degrees) and hover detection over profile rows. |
-| `MouseEvents_LButtonUp.cpp` | Handles `WM_LBUTTONUP` to terminate all drag operations and reset all `dragging*` flags. Calls `SaveConfig()` after any interactive drag ends. |
+| `LButtonDown_Settings.cpp` | Handles left-click on the registry-based settings panel. Manages section collapsing, toggle flipping, and initiates slider dragging by setting `g_draggingElement`. Also includes specialized logic for specific settings like "Gear Radius" or "Refresh Process List". |
+| `MouseEvents_MouseMove.cpp` | Handles `WM_MOUSEMOVE` for the entire application. **Crucial:** Implements the registry-based slider dragging logic by updating values based on mouse delta while `g_draggingElement` is active. Also updates hover states for sidebar panels and manages tooltip timing logic. |
+| `MouseEvents_LButtonUp.cpp` | Handles `WM_LBUTTONUP` to terminate all drag operations (resets `g_draggingElement` and all legacy `dragging*` flags). Calls `SaveConfig()` after any interactive drag ends. |
 
 ---
 
@@ -225,8 +225,8 @@ All files here define **global variables** shared across the entire codebase. Be
 | File | Description |
 |---|---|
 | `ShifterUI_Drawing.cpp` | **Router** for all canvas drawing. `#include`s the seven `UI/Drawing/` fragments back-to-front: HotkeyOverlay → HShifterRails → Gears → ReverseGear → GhostKnob → MainKnob → IndicatorBars. Painter's algorithm ensures correct layering. |
-| `ShifterUI_SidePanels.cpp` | Draws the three right-side panels: **Keybind Panel** (scrollable list of gear → key rows with live glow overlays and binding capture UI), **Input Panel** (secondary key → vJoy button mappings), and **Toggle Panel** (knob toggle, assist button, reverse unlock rows with binding capture). Uses Segoe UI font and `#00FF88` green accent. |
-| `ShifterUI_Settings.cpp` | **Router** for the Settings Panel. `#include`s six `UI/Settings/` fragments in Y-axis order: VariablesAndTitles → Sliders → Toggles → LayoutsAndProfiles → Transparencies → GameControl. Ends with `graphics.ResetClip()`. |
+| `ShifterUI_SidePanels.cpp` | Draws the three modernized right-side panels using a card-based layout: **Keybind Panel** (gear → key rows with pulse-glow animations and vJoy button picker), **Input Panel** (secondary mappings), and **Toggle Panel** (Knob activation, Assist button, Reverse unlock). Features smooth scrolling and premium teal accents. |
+| `ShifterUI_Settings.cpp` | **Router** for the Settings Panel. High-level structure: `#include`s the registry-based loop parts (`Settings_VariablesAndTitles`, `Settings_LayoutsAndProfiles`, `Settings_Registry_Continue`, `Settings_Game_Selector`, `Settings_Registry_Final`, `Settings_VJoyAndKeybinds`). This panel uses the unified `g_settingsRegistry` for most controls. |
 | `ShifterUI_Overlays.cpp` | Draws floating overlays: the borderless-mode grab handle indicator, the update-available button (appears after `CheckForUpdates()` signals `updateAvailable`), and modal dialogs such as the vJoy button picker. |
 | `Graphics_StaticElements.cpp` | Draws non-interactive decorative elements: window border shadow, panel dividers, and title bar area (close button ✕ glyph, maximize button glyph). |
 | `Graphics_DrawBorderless.cpp` | **Router** for borderless overlay rendering. `#include`s the five `UI/Borderless/` fragments in sequence: Prefix → GhostKnob → MainKnob → IndicatorBars → (Math used internally). Calls `UpdateLayeredWindow` with the composed DIBSection for per-pixel alpha transparency. |
@@ -289,19 +289,13 @@ These fragments are `#include`d by `ShifterUI_Settings.cpp` and draw into the Se
 
 | File | Description |
 |---|---|
-| `Settings_VariablesAndTitles.cpp` | Draws the Settings panel background, "Settings" title, and defines the shared drawing variables (fonts, brushes, `y` cursor, scroll-offset clip rect) consumed by all subsequent settings fragments. |
-| `Settings_Sliders.cpp` | Draws all interactive sliders: Knob Radius, Mouse Sensitivity, Snap Speed, Snap-In Threshold, Diagonal Assist, Layout Scale, Scroll Clutch Sensitivity, Axis Smoothing Factor, Controller Sensitivity, Smooth Scroll Speed, Brake Resistance, Acceleration Resistance. Computes and stores each slider's RECT for hit-testing. |
-| `Settings_Toggles.cpp` | Draws all toggle checkboxes: Mouse Steering, Neutral, Realistic Knob, Clutch Lock, Reverse Lock, XInput, Use Right Stick, Disable Real Knob, Knob Acceleration, Show Clutch Indicator, Scroll Clutch, Half-Scroll Clutch, Invert Scroll, Use LT as Clutch, PlayStation Mode, Invert PS Y, Axis Smoothing, Show Y-Bar, Show X-Bar, Hide High Gears, Smart Redraw Optimization. |
-| `Settings_LayoutsAndProfiles.cpp` | Draws the gear layout type dropdown (11 layout options), the gear layout scale control, the 16-gear toggle, INI custom gear layouts dropdown (from `gearlayouts.ini`), and the full multi-profile panel (profile list, create/rename/delete/switch buttons, profile name text field with cursor). |
-| `Settings_Transparencies.cpp` | Draws the Transparency section: windowed minimum alpha slider, dynamic transparency toggle, alpha decay slider, fade delay slider, Win11 Blur toggle, and borderless mode toggle. |
-| `Settings_GameControl.cpp` | **Router** for the Game Control sub-section. `#include`s the six `Settings_Game_*.cpp` fragments in vertical layout order. |
-| `Settings_Game_Selector.cpp` | Draws the "Block Mouse & Look:" process selector widget: a styled text box showing the currently selected game's window title and executable name. When no process is selected, shows "Click to Select Game". Clicking opens the process list modal. |
-| `Settings_Game_Injection.cpp` | Draws the two-button injection control row: **Mouse Blocked / Mouse Free** toggle checkbox and **XInput Blocked / XInput Free** toggle checkbox. Colors inactive = dark grey, active = `#00FF88`. Shows "Hold RMB to use mouse" hint text below. |
-| `Settings_Game_MouseSteering.cpp` | Draws the Mouse Steering sub-section with a divider line and heading. Contains: Mouse Steering enable toggle, Steering Sensitivity slider (0.1–5.0), Max Steering Degrees slider (90–900°), and Acc/Brake Sensitivity slider (0.1–20.0). Each row has an associated tooltip entry. |
-| `Settings_Game_TruckControl.cpp` | Draws the truck-specific control sliders: Brake Resistance (simulates pedal resistance on the Y-axis), and Acceleration Resistance (simulates throttle resistance). Both normalized to a configurable range. |
-| `Settings_Game_Clutch.cpp` | Draws the Scroll Clutch sub-section: Scroll Clutch enable toggle, Half-Scroll Clutch toggle (only upper half of axis range), Invert Scroll toggle, scroll clutch sensitivity slider, and "Use LT as Clutch" toggle for XInput triggers. |
-| `Settings_Game_Controller.cpp` | Draws the Controller/XInput sub-section: XInput enable toggle, Use Right Stick toggle, PlayStation Mode toggle, Invert PS Y toggle, Use Axis Smoothing toggle, Controller Sensitivity slider, Axis Smoothing Factor slider, and invert-assist-axes toggle. Also includes the active gamepad combo picker (`g_gamepads` list). |
-| `Settings_VJoyAndKeybinds.cpp` | Draws the vJoy device picker (dropdown of available vJoy device IDs 1–16), the vJoy button picker modal trigger ("Assign Buttons" button), and the "Binding Mode for R Axis" toggle for enabling full wheel-axis steering output vs. gear-based output. |
+| `Settings_VariablesAndTitles.cpp` | Initializes the `g_settingsRegistry` if empty. Defines labels, tooltips, value pointers, and ranges for all core settings (Physics, Toggles, Transparency, Steering, Indicators). Also draws the "Settings" title and manages smooth scrolling offsets. |
+| `Settings_Registry.cpp` / `.h` | Defines the `SettingElement` structure and the global `g_settingsRegistry` vector. This is the source of truth for all automated settings UI generation. |
+| `Settings_Registry_LoopBody.cpp` | **Core Rendering Engine** for settings. Iterates over the registry and draws modern card-based UI for headings, high-quality GDI+ sliders (with glow and reset icons), and pill-style toggle switches. Automatically calculates hitboxes (`element.rect`) for interaction. |
+| `Settings_LayoutsAndProfiles.cpp` | Custom UI fragment for profile management and layout selection. Not part of the generic registry as it requires complex custom interactions (text entry, renaming, multiple lists). |
+| `Settings_Game_Selector.cpp` | Specialized widget for the DLL injector's target process selection. Includes the process picker modal logic and high-performance list rendering. |
+| `Settings_VJoyAndKeybinds.cpp` | UI for vJoy device selection and advanced keybinding modes. |
+| `Legacy_Backup/` | Contains the old `Settings_Sliders.cpp`, `Settings_Toggles.cpp`, and `Settings_Transparencies.cpp` that were used before the registry system was implemented. |
 
 ---
 

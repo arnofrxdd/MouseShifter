@@ -193,7 +193,17 @@ Add your new file as a `<ClInclude>` in `MouseShifter.vcxproj`:
 - **Save:** Add a `WritePrivateProfileString` call in `Core/Config/Config_Save.cpp`
 - **Load:** Add a `GetPrivateProfileString` / `GetPrivateProfileInt` call in `Core/Config/Config_Load.cpp`
 
-### Step 7: Build and Verify
+### Step 7: Register in the Settings Registry (if it is a setting)
+
+If your feature adds a new setting (slider or toggle), you should register it in `UI/Settings/Settings_VariablesAndTitles.cpp`:
+
+1.  **Variable:** Ensure your variable is declared in a global header (e.g., `Globals_ConfigInput.h`).
+2.  **Registry Push:** Add a `g_settingsRegistry.push_back(...)` call in `Settings_VariablesAndTitles.cpp`.
+3.  **Special Logic:** If the setting requires per-change updates (like recomputing layouts), add the logic to:
+    *   `LButtonDown_Settings.cpp` (inside the registry loop's slider/toggle handlers).
+    *   `MouseEvents_MouseMove.cpp` (inside the `g_draggingElement` handler for real-time slider updates).
+
+### Step 8: Build and Verify
 
 ```
 Build → Rebuild Solution (Ctrl+Shift+B)
