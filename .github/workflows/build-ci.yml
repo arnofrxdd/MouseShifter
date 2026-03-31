@@ -92,11 +92,12 @@ jobs:
         if ("${{ secrets.VIRUSTOTAL_API_KEY }}") {
           Write-Host "Triggering VirusTotal scan (curl)..."
           try {
-            # Use curl (built-in to Windows) for the multipart upload, more robust than Invoke-RestMethod in PS 5.1
-            $response = curl -X POST "https://www.virustotal.com/api/v3/files" `
+            # Use curl.exe (actual binary) to bypass PowerShell's 'curl' alias for Invoke-WebRequest
+            $responseJson = curl.exe --silent -X POST "https://www.virustotal.com/api/v3/files" `
               -H "x-apikey: ${{ secrets.VIRUSTOTAL_API_KEY }}" `
-              -F "file=@${{ steps.info.outputs.ZIP }}" | ConvertFrom-Json
+              -F "file=@${{ steps.info.outputs.ZIP }}"
             
+            $response = $responseJson | ConvertFrom-Json
             Write-Host "VirusTotal analysis started! ID: $($response.data.id)"
           } catch {
              Write-Host "VT Scan Trigger failed. Error: $($_.Exception.Message)"
