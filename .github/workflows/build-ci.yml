@@ -30,8 +30,8 @@ jobs:
       id: get_version
       shell: powershell
       run: |
-        $content = Get-Content "MouseShifter/Core/System/Updater.cpp"
-        if ($content -match 'currentVersion = \"([0-9.]+)\"') {
+        $content = (Get-Content "MouseShifter/Core/System/Updater.cpp") -join "`n"
+        if ($content -match 'currentVersion\s*=\s*\"([0-9.]+)\"') {
           $version = $matches[1]
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           echo "Found version: $version"
