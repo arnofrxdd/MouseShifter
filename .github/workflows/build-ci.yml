@@ -1,8 +1,9 @@
-name: MouseShifter CI
+name: MouseShifter CI/CD
 
 on:
   push:
     branches: [ "main", "master" ]
+    tags: [ "v*.*.*", "v*" ]
   pull_request:
     branches: [ "main", "master" ]
 
@@ -28,11 +29,19 @@ jobs:
     - name: Zip Build Output
       shell: powershell
       run: |
-        # Zip the entire Release folder which contains our EXE and all necessary DLLs
-        Compress-Archive -Path "x64\Release\*" -DestinationPath "MouseShifter_x64_Release.zip"
+        Compress-Archive -Path "x64\Release\*" -DestinationPath "MouseShifter_Release.zip"
 
-    - name: Upload Build Artifact
+    - name: Upload Build Artifact (CI)
       uses: actions/upload-artifact@v4
       with:
         name: MouseShifter-Full-Bundle
-        path: MouseShifter_x64_Release.zip
+        path: MouseShifter_Release.zip
+
+    - name: Create GitHub Release (CD)
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: MouseShifter_Release.zip
+        body: "Automated release of MouseShifter version ${{ github.ref_name }}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
