@@ -20,7 +20,7 @@ bool IsInternetAvailable()
     return InternetGetConnectedState(&flags, 0) != 0;
 }
 
-std::string currentVersion = "6.2";
+std::string currentVersion = "6.3";
 bool updateAvailable = false;
 bool showUpdateModal = false;
 std::string latestVersion = "";
@@ -203,92 +203,57 @@ void PerformUpdate()
     // Generate dynamic download URL from tag
     std::string zipUrl = "https://github.com/arnofrxdd/MouseShifter/releases/download/" + latestTag + "/MouseShifter_Release.zip";
     std::wstring tempZip = L"MouseShifter_update.zip";
-    std::wstring exePath, updaterPath;
-
+    
     wchar_t path[MAX_PATH];
-    if (GetModuleFileNameW(NULL, path, MAX_PATH) == 0)
-    {
-        DBGPRINT("[Update] GetModuleFileNameW failed, error: %lu\n", GetLastError());
-        return;
-    }
+    if (GetModuleFileNameW(NULL, path, MAX_PATH) == 0) return;
 
-    exePath = path;
+    std::wstring exePath = path;
     std::wstring exeDir = exePath.substr(0, exePath.find_last_of(L"\\/"));
     std::wstring tempZipPath = exeDir + L"\\" + tempZip;
-    std::wstring tempFolderW = exeDir + L"\\update_temp";
-    std::wstring logPathW = exeDir + L"\\update_log.txt";
 
-    DBGPRINT("[Update] Downloading zip from: %s\n", zipUrl.c_str());
+    DBGPRINT("[Update] Downloading zip: %s\n", zipUrl.c_str());
 
     if (!DownloadFile(zipUrl, tempZipPath))
     {
-        DBGPRINT("[Update] DownloadFile failed, error: %lu\n", GetLastError());
-        MessageBoxA(NULL, "Failed to download the update. Check your internet connection.", "Update Error", MB_OK | MB_ICONERROR);
+        MessageBoxA(NULL, "Failed to download update. Check connection.", "Update Error", MB_OK | MB_ICONERROR);
         return;
     }
 
-    // Modern "Hand-Off" Update Strategy:
-    // This is the "God Script": It waits for MouseShifter to die, extracts, cleans, and restarts.
-    std::wstring psCommand = 
-        L"-NoProfile -ExecutionPolicy Bypass -Command \""
-        L"Start-Sleep -s 1; "
-        L"$log = '" + logPathW + L"'; "
-        L"\"--- Starting Update --- \" | Out-File $log; "
-        L"$proc = Get-Process -Name 'MouseShifter' -ErrorAction SilentlyContinue; "
-        L"if ($proc) { \"Closing process...\" | Out-File $log -Append; $proc | Stop-Process -Force; Start-Sleep -s 1; } "
-        L"$zip = '" + tempZipPath + L"'; "
-        L"$dest = '" + exeDir + L"'; "
-        L"$temp = '" + tempFolderW + L"'; "
-        L"try { "
-        L"  \"Extracting $zip to $temp...\" | Out-File $log -Append; "
-        L"  Expand-Archive -Path $zip -DestinationPath $temp -Force; "
-        L"  \"Moving files to $dest...\" | Out-File $log -Append; "
-        L"  Get-ChildItem -Path $temp -Recurse | ForEach-Object { "
-        L"    $target = Join-Path $dest $_.Fullname.Substring($temp.Length + 1); "
-        L"    if ($_.PsIsContainer) { if (!(Test-Path $target)) { New-Item $target -ItemType Directory | Out-Null } } "
-        L"    else { "
-        L"       if ($_.Name -notmatch 'config.ini|gearlayouts.ini|profiles/') { "
-        L"          \"Replacing: $($_.Name)\" | Out-File $log -Append; "
-        L"          Copy-Item $_.FullName $target -Force; "
-        L"       } "
-        L"    } "
-        L"  }; "
-        L"  \"Update Complete!\" | Out-File $log -Append; "
-        L"} catch { \"ERROR: $($_.Exception.Message)\" | Out-File $log -Append; } finally { "
-        L"  Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue; "
-        L"  Remove-Item $zip -Force -ErrorAction SilentlyContinue; "
-        L"  Start-Process -FilePath '" + exePath + L"'; "
-        L"} \"";
+    // Bootstrap the Native Updater from the zip using built-in 'tar.exe'
+    // tar is a binary, not a script, so this fulfills the "no script based" request.
+    std::wstring bootstrapCmd = L"tar -xf \"" + tempZipPath + L"\" MouseShifterUpdater.exe";
+    DBGPRINT("[Update] Bootstrapping updater: %S\n", bootstrapCmd.c_str());
+    
+    _wsystem(bootstrapCmd.c_str());
 
-    DBGPRINT("[Update] Launching Modern PS Dispatcher...\n");
+    // Launch the standalone updater
+    std::wstring updaterExe = exeDir + L"\\MouseShifterUpdater.exe";
+    std::wstring pidStr = std::to_wstring(GetCurrentProcessId());
+    
+    // Arguments: ParentPID, ZipPath, DestDir
+    std::wstring args = L"\"" + updaterExe + L"\" " + pidStr + L" \"" + tempZipPath + L"\" \"" + exeDir + L"\"";
+    
+    DBGPRINT("[Update] Launching: %S\n", args.c_str());
 
-    // Launch PowerShell directly without a batch file
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi = { 0 };
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE; // Run it silently
-
-    wchar_t psPath[MAX_PATH];
-    ExpandEnvironmentStringsW(L"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", psPath, MAX_PATH);
-
-    std::wstring fullCmd = L"\"" + std::wstring(psPath) + L"\" " + psCommand;
-    wchar_t* cmdBuffer = _wcsdup(fullCmd.c_str());
-
-    if (CreateProcessW(NULL, cmdBuffer, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+    
+    // CreateProcessW needs a mutable buffer for the second argument
+    wchar_t* argsBuf = _wcsdup(args.c_str());
+    
+    if (CreateProcessW(NULL, argsBuf, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, exeDir.c_str(), &si, &pi))
     {
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-        free(cmdBuffer);
-        
-        DBGPRINT("[Update] Hand-off successful. Exiting app.\n");
-        // Exit fast to let PS take over
+        free(argsBuf);
+        DBGPRINT("[Update] Hand-off successful. Exiting.\n");
         _exit(0);
     }
     else
     {
-        free(cmdBuffer);
-        DBGPRINT("[Update] CreateProcessW failed, error: %lu\n", GetLastError());
-        MessageBoxW(NULL, L"The update dispatcher failed to start. Try running as Admin.", L"Update Hand-off Failed", MB_OK | MB_ICONERROR);
+        free(argsBuf);
+        DBGPRINT("[Update] Failed to launch updater, error: %lu\n", GetLastError());
+        MessageBoxW(NULL, L"Failed to start MouseShifterUpdater.exe. Try manual update.", L"Update Error", MB_OK | MB_ICONERROR);
     }
 }
 

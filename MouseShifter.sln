@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.35229.62
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MouseShifter", "MouseShifter\MouseShifter.vcxproj", "{ECBBB4D7-BE5F-4BB4-BB16-3CB192E6A906}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MouseShifterUpdater", "MouseShifter\Updater\MouseShifterUpdater.vcxproj", "{43CB2D65-A25D-4D39-A512-E7A4A2B2A191}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,12 @@ Global
 		{ECBBB4D7-BE5F-4BB4-BB16-3CB192E6A906}.Release|x64.Build.0 = Release|x64
 		{ECBBB4D7-BE5F-4BB4-BB16-3CB192E6A906}.Release|x86.ActiveCfg = Release|Win32
 		{ECBBB4D7-BE5F-4BB4-BB16-3CB192E6A906}.Release|x86.Build.0 = Release|Win32
+		{43CB2D65-A25D-4D39-A512-E7A4A2B2A191}.Debug|x64.ActiveCfg = Debug|x64
+		{43CB2D65-A25D-4D39-A512-E7A4A2B2A191}.Debug|x64.Build.0 = Debug|x64
+		{43CB2D65-A25D-4D39-A512-E7A4A2B2A191}.Debug|x86.ActiveCfg = Debug|x64
+		{43CB2D65-A25D-4D39-A512-E7A4A2B2A191}.Release|x64.ActiveCfg = Release|x64
+		{43CB2D65-A25D-4D39-A512-E7A4A2B2A191}.Release|x64.Build.0 = Release|x64
+		{43CB2D65-A25D-4D39-A512-E7A4A2B2A191}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
