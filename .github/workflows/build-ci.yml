@@ -136,25 +136,28 @@ jobs:
         $webhook = "${{ secrets.DISCORD_WEBHOOK }}"
         if (!$webhook) { Write-Host "Discord Webhook not set, skipping."; exit 0 }
         
-        $title = "🚀 New MouseShifter $($steps.info.outputs.TYPE -replace 'stable', 'Stable' -replace 'nightly', 'Nightly Beta') Release!"
-        $color = if ("${{ steps.info.outputs.TYPE }}" -eq "stable") { 65280 } else { 16776960 } # Green for stable, Yellow for nightly
+        # We use plain text labels here to avoid encoding issues with older PowerShell versions in CI
+        $title = "New MouseShifter ${{ steps.info.outputs.TYPE == 'stable' && 'Stable' || 'Nightly Beta' }} Release!"
+        $color = if ("${{ steps.info.outputs.TYPE }}" -eq "stable") { 65280 } else { 16776960 }
         
         $payload = @{
           embeds = @(@{
-            title = "MouseShifter $title"
-            url = "https://github.com/arnofrxdd/MouseShifter/releases/tag/$($steps.info.outputs.TAG)"
+            title = $title
+            url = "https://github.com/arnofrxdd/MouseShifter/releases/tag/${{ steps.info.outputs.TAG }}"
             color = $color
             fields = @(
-              @{ name = "📦 Version"; value = "v${{ steps.get_version.outputs.VERSION }}"; inline = $true }
-              @{ name = "📁 File"; value = "`${{ steps.info.outputs.ZIP }}`"; inline = $true }
-              @{ name = "🛡️ SHA256 Hash"; value = "`${{ steps.security.outputs.SHA256 }}`" }
-              @{ name = "📥 Download Link"; value = "[Click to view release and download](https://github.com/arnofrxdd/MouseShifter/releases/tag/$($steps.info.outputs.TAG))" }
+              @{ name = "Version"; value = "v${{ steps.get_version.outputs.VERSION }}"; inline = $true }
+              @{ name = "File"; value = "`${{ steps.info.outputs.ZIP }}`"; inline = $true }
+              @{ name = "SHA256 Hash"; value = "`${{ steps.security.outputs.SHA256 }}`" }
+              @{ name = "Download Link"; value = "[Click to Download](https://github.com/arnofrxdd/MouseShifter/releases/tag/${{ steps.info.outputs.TAG }})" }
             )
             footer = @{ text = "Automated Build System" }
             timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           })
         }
         
-        $json = $payload | ConvertTo-Json -Depth 5
+        $json = $payload | ConvertTo-Json -Depth 5 -Compress
         Write-Host "Sending to Discord..."
-        curl.exe -H "Content-Type: application/json" -X POST -d $json $webhook
+        # We write JSON to a temp file then upload to avoid command line argument length/escaping issues
+        $json | Out-File -FilePath discord_payload.json -Encoding utf8
+        curl.exe -H "Content-Type: application/json" -X POST -d "@discord_payload.json" $webhook
