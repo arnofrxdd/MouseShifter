@@ -168,5 +168,8 @@ jobs:
                      -replace "ZIPNAME", $zip `
                      -replace "HASHDATA", $hash
         
-        $json | Out-File -FilePath discord_payload.json -Encoding utf8
-        curl.exe -H "Content-Type: application/json" -X POST -d "@discord_payload.json" $webhook
+        Write-Host "Sending to Discord..."
+        # We write JSON to a temp file without BOM because Discord hates BOM
+        $finalPath = "$pwd\discord_payload.json"
+        [System.IO.File]::WriteAllText($finalPath, $json)
+        curl.exe --silent -H "Content-Type: application/json" -X POST -d "@$finalPath" $webhook
