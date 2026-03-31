@@ -20,7 +20,7 @@ bool IsInternetAvailable()
     return InternetGetConnectedState(&flags, 0) != 0;
 }
 
-std::string currentVersion = "6.3";
+std::string currentVersion = "6.4";
 bool updateAvailable = false;
 bool showUpdateModal = false;
 std::string latestVersion = "";
@@ -201,8 +201,11 @@ void PerformUpdate()
     }
 
     // Generate dynamic download URL from tag
-    std::string zipUrl = "https://github.com/arnofrxdd/MouseShifter/releases/download/" + latestTag + "/MouseShifter_Release.zip";
-    std::wstring tempZip = L"MouseShifter_update.zip";
+    std::string zipName = "MouseShifter_v" + latestVersion + ".zip";
+    std::string zipUrl = "https://github.com/arnofrxdd/MouseShifter/releases/download/" + latestTag + "/" + zipName;
+    
+    std::wstring wZipName(zipName.begin(), zipName.end());
+    std::wstring tempZip = wZipName;
     
     wchar_t path[MAX_PATH];
     if (GetModuleFileNameW(NULL, path, MAX_PATH) == 0) return;
