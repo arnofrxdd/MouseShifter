@@ -43,6 +43,14 @@ jobs:
     - name: Build MouseShifter (x64 Release)
       run: msbuild MouseShifter.sln /p:Configuration=Release /p:Platform=x64
 
+    - name: Prepare Release Bundle
+      shell: powershell
+      run: |
+        # Ensure the Release folder has all dependencies
+        Copy-Item "MouseShifter/SDL2 LIBS/lib/x64/SDL2.dll" -Destination "x64/Release/" -Force
+        Copy-Item "MouseShifter/RawMouseInput.dll" -Destination "x64/Release/" -Force
+        Copy-Item "MouseShifter/xInputBlocker.dll" -Destination "x64/Release/" -Force
+
     - name: Zip Build Output
       shell: powershell
       run: |

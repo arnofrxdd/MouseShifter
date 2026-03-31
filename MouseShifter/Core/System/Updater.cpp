@@ -201,7 +201,7 @@ void PerformUpdate()
     }
 
     // Generate dynamic download URL from tag
-    std::string zipUrl = "https://github.com/arnofrxdd/MouseShifter/releases/download/" + latestTag + "/MouseShifter.zip";
+    std::string zipUrl = "https://github.com/arnofrxdd/MouseShifter/releases/download/" + latestTag + "/MouseShifter_Release.zip";
     std::wstring tempZip = L"MouseShifter_update.zip";
     std::wstring exePath, updaterPath;
 
@@ -214,11 +214,11 @@ void PerformUpdate()
 
     exePath = path;
     std::wstring exeDir = exePath.substr(0, exePath.find_last_of(L"\\/"));
-    updaterPath = exeDir + L"\\updater.bat";
     std::wstring tempZipPath = exeDir + L"\\" + tempZip;
+    std::wstring tempFolderW = exeDir + L"\\update_temp";
+    std::wstring logPathW = exeDir + L"\\update_log.txt";
 
     DBGPRINT("[Update] Downloading zip from: %s\n", zipUrl.c_str());
-    DBGPRINT("[Update] Temp zip path: %S\n", tempZipPath.c_str());
 
     if (!DownloadFile(zipUrl, tempZipPath))
     {
@@ -227,38 +227,37 @@ void PerformUpdate()
         return;
     }
 
-    DBGPRINT("[Update] Download successful: %S\n", tempZipPath.c_str());
-
     // Modern "Hand-Off" Update Strategy:
-    // 1. Download zip
-    // 2. Launch a single PowerShell command that waits, extracts, replaces, and restarts
-    // 3. Exit IMMEDIATELY to free file locks
-
-    std::wstring exeDirW = exeDir;
-    std::wstring exePathW = exePath;
-    std::wstring tempZipPathW = tempZipPath;
-    std::wstring tempFolderW = exeDir + L"\\update_temp";
-
     // This is the "God Script": It waits for MouseShifter to die, extracts, cleans, and restarts.
     std::wstring psCommand = 
         L"-NoProfile -ExecutionPolicy Bypass -Command \""
         L"Start-Sleep -s 1; "
+        L"$log = '" + logPathW + L"'; "
+        L"\"--- Starting Update --- \" | Out-File $log; "
         L"$proc = Get-Process -Name 'MouseShifter' -ErrorAction SilentlyContinue; "
-        L"if ($proc) { $proc | Stop-Process -Force; Start-Sleep -s 1; } "
-        L"$zip = '" + tempZipPathW + L"'; "
-        L"$dest = '" + exeDirW + L"'; "
+        L"if ($proc) { \"Closing process...\" | Out-File $log -Append; $proc | Stop-Process -Force; Start-Sleep -s 1; } "
+        L"$zip = '" + tempZipPath + L"'; "
+        L"$dest = '" + exeDir + L"'; "
         L"$temp = '" + tempFolderW + L"'; "
         L"try { "
+        L"  \"Extracting $zip to $temp...\" | Out-File $log -Append; "
         L"  Expand-Archive -Path $zip -DestinationPath $temp -Force; "
+        L"  \"Moving files to $dest...\" | Out-File $log -Append; "
         L"  Get-ChildItem -Path $temp -Recurse | ForEach-Object { "
         L"    $target = Join-Path $dest $_.Fullname.Substring($temp.Length + 1); "
         L"    if ($_.PsIsContainer) { if (!(Test-Path $target)) { New-Item $target -ItemType Directory | Out-Null } } "
-        L"    else { if ($_.Name -notmatch 'config.ini|gearlayouts.ini|profiles') { Copy-Item $_.FullName $target -Force } } "
+        L"    else { "
+        L"       if ($_.Name -notmatch 'config.ini|gearlayouts.ini|profiles/') { "
+        L"          \"Replacing: $($_.Name)\" | Out-File $log -Append; "
+        L"          Copy-Item $_.FullName $target -Force; "
+        L"       } "
+        L"    } "
         L"  }; "
-        L"} catch { Write-Error $_; } finally { "
+        L"  \"Update Complete!\" | Out-File $log -Append; "
+        L"} catch { \"ERROR: $($_.Exception.Message)\" | Out-File $log -Append; } finally { "
         L"  Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue; "
         L"  Remove-Item $zip -Force -ErrorAction SilentlyContinue; "
-        L"  Start-Process -FilePath '" + exePathW + L"'; "
+        L"  Start-Process -FilePath '" + exePath + L"'; "
         L"} \"";
 
     DBGPRINT("[Update] Launching Modern PS Dispatcher...\n");
