@@ -81,6 +81,28 @@ jobs:
         name: MouseShifter-${{ steps.info.outputs.TYPE }}
         path: ${{ steps.info.outputs.ZIP }}
 
+    - name: Generate Security Hash & Scan Link
+      id: security
+      shell: powershell
+      run: |
+        $hash = (Get-FileHash -Path "${{ steps.info.outputs.ZIP }}" -Algorithm SHA256).Hash
+        echo "SHA256=$hash" >> $env:GITHUB_OUTPUT
+        echo "VT_LINK=https://www.virustotal.com/gui/file/$hash/detection" >> $env:GITHUB_OUTPUT
+        
+        # If API key is present, trigger a fresh scan
+        if ("${{ secrets.VIRUSTOTAL_API_KEY }}") {
+          Write-Host "Triggering VirusTotal scan..."
+          # Note: This is an async call to VT API v2 for a fresh scan
+          # VT API Key is required for this to work
+          try {
+            $response = Invoke-RestMethod -Uri "https://www.virustotal.com/vtapi/v2/file/scan" `
+              -Method Post -Form @{ apikey = "${{ secrets.VIRUSTOTAL_API_KEY }}"; file = Get-Item "${{ steps.info.outputs.ZIP }}" }
+            Write-Host "VirusTotal Scan ID: $($response.scan_id)"
+          } catch {
+             Write-Host "VT Scan Trigger failed, but hash link remains valid."
+          }
+        }
+
     - name: Create / Update GitHub Release
       if: github.event_name != 'pull_request'
       uses: softprops/action-gh-release@v2
@@ -92,8 +114,15 @@ jobs:
           ### ${{ steps.info.outputs.TYPE == 'stable' && 'Stable Release' || 'Nightly Development Build' }}
           ${{ steps.info.outputs.TYPE == 'stable' && 'Official release version.' || 'This is an experimental pre-release. Use with caution!' }}
           
+          ---
           **Version**: ${{ steps.get_version.outputs.VERSION }}
           **Build Time**: ${{ github.event.head_commit.timestamp || 'Manual/Scheduled' }}
+          
+          🛡️ **Security Verification**
+          - **SHA256**: `${{ steps.security.outputs.SHA256 }}`
+          - [**VirusTotal Scan Report**](${{ steps.security.outputs.VT_LINK }})
+          
+          *Note: If the VirusTotal link is new, click "Reanalyze" on their site to see the fresh results for this exact build.*
         prerelease: ${{ steps.info.outputs.PRERELEASE }}
         generate_release_notes: true
       env:
