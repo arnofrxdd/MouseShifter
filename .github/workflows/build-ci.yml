@@ -90,18 +90,16 @@ jobs:
         echo "VT_LINK=https://www.virustotal.com/gui/file/$hash/detection" >> $env:GITHUB_OUTPUT
         
         if ("${{ secrets.VIRUSTOTAL_API_KEY }}") {
-          Write-Host "Triggering VirusTotal scan (API v3)..."
+          Write-Host "Triggering VirusTotal scan (curl)..."
           try {
-            # Use VirusTotal API v3 for files
-            $headers = @{ "x-apikey" = "${{ secrets.VIRUSTOTAL_API_KEY }}" }
-            $response = Invoke-RestMethod -Uri "https://www.virustotal.com/api/v3/files" `
-              -Method Post -Headers $headers -Form @{ file = Get-Item "${{ steps.info.outputs.ZIP }}" }
+            # Use curl (built-in to Windows) for the multipart upload, more robust than Invoke-RestMethod in PS 5.1
+            $response = curl -X POST "https://www.virustotal.com/api/v3/files" `
+              -H "x-apikey: ${{ secrets.VIRUSTOTAL_API_KEY }}" `
+              -F "file=@${{ steps.info.outputs.ZIP }}" | ConvertFrom-Json
             
             Write-Host "VirusTotal analysis started! ID: $($response.data.id)"
           } catch {
              Write-Host "VT Scan Trigger failed. Error: $($_.Exception.Message)"
-             # Log the full response if possible
-             if ($_.ErrorDetails) { Write-Host "Details: $($_.ErrorDetails.Message)" }
           }
         }
 
