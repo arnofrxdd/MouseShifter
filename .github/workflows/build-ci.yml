@@ -89,17 +89,19 @@ jobs:
         echo "SHA256=$hash" >> $env:GITHUB_OUTPUT
         echo "VT_LINK=https://www.virustotal.com/gui/file/$hash/detection" >> $env:GITHUB_OUTPUT
         
-        # If API key is present, trigger a fresh scan
         if ("${{ secrets.VIRUSTOTAL_API_KEY }}") {
-          Write-Host "Triggering VirusTotal scan..."
-          # Note: This is an async call to VT API v2 for a fresh scan
-          # VT API Key is required for this to work
+          Write-Host "Triggering VirusTotal scan (API v3)..."
           try {
-            $response = Invoke-RestMethod -Uri "https://www.virustotal.com/vtapi/v2/file/scan" `
-              -Method Post -Form @{ apikey = "${{ secrets.VIRUSTOTAL_API_KEY }}"; file = Get-Item "${{ steps.info.outputs.ZIP }}" }
-            Write-Host "VirusTotal Scan ID: $($response.scan_id)"
+            # Use VirusTotal API v3 for files
+            $headers = @{ "x-apikey" = "${{ secrets.VIRUSTOTAL_API_KEY }}" }
+            $response = Invoke-RestMethod -Uri "https://www.virustotal.com/api/v3/files" `
+              -Method Post -Headers $headers -Form @{ file = Get-Item "${{ steps.info.outputs.ZIP }}" }
+            
+            Write-Host "VirusTotal analysis started! ID: $($response.data.id)"
           } catch {
-             Write-Host "VT Scan Trigger failed, but hash link remains valid."
+             Write-Host "VT Scan Trigger failed. Error: $($_.Exception.Message)"
+             # Log the full response if possible
+             if ($_.ErrorDetails) { Write-Host "Details: $($_.ErrorDetails.Message)" }
           }
         }
 
