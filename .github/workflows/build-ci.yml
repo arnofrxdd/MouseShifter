@@ -1,0 +1,38 @@
+name: MouseShifter CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v1
+      
+    - name: Restore NuGet Packages
+      run: nuget restore MouseShifter.sln
+
+    - name: Build MouseShifter (x64 Release)
+      run: msbuild MouseShifter.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: Zip Build Output
+      shell: powershell
+      run: |
+        # Zip the entire Release folder which contains our EXE and all necessary DLLs
+        Compress-Archive -Path "x64\Release\*" -DestinationPath "MouseShifter_x64_Release.zip"
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MouseShifter-Full-Bundle
+        path: MouseShifter_x64_Release.zip
