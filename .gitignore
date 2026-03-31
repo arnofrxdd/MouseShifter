@@ -29,6 +29,18 @@ RawMouse/Release/
 *.dll
 *.lib
 
+# Allow libraries and DLLs in project folders
+!MouseShifter/SDL2 LIBS/lib/x64/SDL2.dll
+!MouseShifter/SDL2 LIBS/lib/x64/SDL2.lib
+!MouseShifter/SDL2 LIBS/lib/x64/SDL2main.lib
+!MouseShifter/SDL2 LIBS/lib/x86/SDL2.dll
+!MouseShifter/SDL2 LIBS/lib/x86/SDL2.lib
+!MouseShifter/SDL2 LIBS/lib/x86/SDL2main.lib
+!MouseShifter/vJoy/vJoyInterface.dll
+!MouseShifter/vJoy/vJoyInterface.lib
+!MouseShifter/*.dll
+!MouseShifter/*.lib
+
 # Packages
 packages/
 

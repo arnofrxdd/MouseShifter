@@ -135,6 +135,15 @@
       <AdditionalLibraryDirectories>$(ProjectDir)SDL2 LIBS\lib\x64;%(AdditionalLibraryDirectories);$(ProjectDir)vJoy</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;gdiplus.lib;vJoyInterface.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(ProjectDir)SDL2 LIBS\lib\$(Platform)\SDL2.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)vJoy\vJoyInterface.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)gearlayouts.ini" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)RawMouseInput.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)xInputBlocker.dll" "$(OutDir)"
+if not exist "$(OutDir)profiles" mkdir "$(OutDir)profiles"
+xcopy /y /d /e /i "$(ProjectDir)profiles\*" "$(OutDir)profiles"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -157,6 +166,15 @@
       <AdditionalLibraryDirectories>$(ProjectDir)SDL2 LIBS\lib\x64;%(AdditionalLibraryDirectories);$(ProjectDir)vJoy</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;gdiplus.lib;vJoyInterface.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(ProjectDir)SDL2 LIBS\lib\$(Platform)\SDL2.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)vJoy\vJoyInterface.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)gearlayouts.ini" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)RawMouseInput.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)xInputBlocker.dll" "$(OutDir)"
+if not exist "$(OutDir)profiles" mkdir "$(OutDir)profiles"
+xcopy /y /d /e /i "$(ProjectDir)profiles\*" "$(OutDir)profiles"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Core\Globals\AppGlobals.h" />
