@@ -143,18 +143,18 @@ jobs:
         $zip = "${{ steps.info.outputs.ZIP }}"
         $hash = "${{ steps.security.outputs.SHA256 }}"
         
-        # Build JSON using a simple string template to avoid PowerShell dictionary/escaping issues
+        # Build JSON using Unicode escape sequences for emojis to avoid encoding issues
         $json = @'
         {
           "embeds": [{
-            "title": "🚀 New MouseShifter TYPE Release!",
+            "title": "\uD83D\uDE80 New MouseShifter TYPE Release!",
             "url": "https://github.com/arnofrxdd/MouseShifter/releases/tag/TAGNAME",
             "color": COLORCODE,
             "fields": [
-              { "name": "📦 Version", "value": "vVERNUM", "inline": true },
-              { "name": "📁 File", "value": "`ZIPNAME`", "inline": true },
-              { "name": "🛡️ SHA256 Hash", "value": "`HASHDATA`" },
-              { "name": "📥 Download Link", "value": "[Click to Download](https://github.com/arnofrxdd/MouseShifter/releases/tag/TAGNAME)" }
+              { "name": "\uD83D\uDCE6 Version", "value": "vVERNUM", "inline": true },
+              { "name": "\uD83D\uDCC1 File", "value": "`ZIPNAME`", "inline": true },
+              { "name": "\uD83D\uDEE1\uFE0F SHA256 Hash", "value": "`HASHDATA`" },
+              { "name": "\uD83D\uDCE5 Download Link", "value": "[Click to Download](https://github.com/arnofrxdd/MouseShifter/releases/tag/TAGNAME)" }
             ],
             "footer": { "text": "Automated Build System" }
           }]
