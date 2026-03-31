@@ -163,36 +163,29 @@
                 return 0;
             }
         }
-        // Update button click (add debug output)
-        if (updateAvailable && !isBorderless && PtInRect(&updateButtonRect, pt))
+        if (showUpdateModal)
         {
-            char debugBuf[256];
-            sprintf_s(debugBuf, "[UPDATE CLICK] Button clicked! Mouse: (%d,%d), Button: (%d,%d)-(%d,%d)\n",
-                pt.x, pt.y,
-                updateButtonRect.left, updateButtonRect.top,
-                updateButtonRect.right, updateButtonRect.bottom);
-            OutputDebugStringA(debugBuf);
-
-            std::wstring currentVersionW(currentVersion.begin(), currentVersion.end());
-            std::wstring latestVersionW(latestVersion.begin(), latestVersion.end());
-
-            std::wstring message =
-                L"A new version is available! Would you like to update now?\n\n"
-                L"Current version: " + currentVersionW + L"\n" +
-                L"Latest version: " + latestVersionW + L"\n\n" +
-                L"Your settings will be preserved.";
-
-            int result = MessageBoxW(hwnd, message.c_str(), L"Update Available", MB_YESNO | MB_ICONINFORMATION);
-            if (result == IDYES)
+            if (PtInRect(&g_modalActionRect, pt))
             {
-                OutputDebugStringA("[UPDATE] User chose to update - starting update process...\n");
+                showUpdateModal = false;
                 PerformUpdate();
+                return 0;
             }
-            else
+            if (PtInRect(&g_modalCancelRect, pt))
             {
-                OutputDebugStringA("[UPDATE] User chose to skip update\n");
+                showUpdateModal = false;
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
             }
-            return 0; // Important: return here to prevent click from passing through
+            return 0; // Block clicks while modal is open
+        }
+
+        // --- Handle subtle update button click ---
+        if (updateAvailable && !isBorderless && PtInRect(&updateSubtleBtnRect, pt))
+        {
+            showUpdateModal = true;
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
         }
         if (showInputPanel && PtInRect(&inputPanelRectHit, pt))
         {

@@ -9,8 +9,10 @@
 
 extern std::string currentVersion;
 extern bool updateAvailable;
+extern bool showUpdateModal; // NEW: Flag for the modal pop-up
 extern std::string latestVersion;
 extern RECT updateButtonRect;
+extern RECT updateSubtleBtnRect; // NEW: Subtle button next to keybinds
 extern bool checkingForUpdates;
 
 int CompareVersions(const std::string& a, const std::string& b);

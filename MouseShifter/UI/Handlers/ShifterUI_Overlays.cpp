@@ -85,37 +85,72 @@
             graphics.DrawString(numStr.c_str(), -1, &btnFont, btnRectF, &centerFormat, hovered ? &accentBrush : &valueBrush);
         }
     }
-    // --- Floating Update Button ---
-// --- Floating Update Button Stub ---
-    if (updateAvailable && !isBorderless)
+    if (showUpdateModal)
     {
-        // Position in middle-bottom (for potential click detection)
-        int buttonWidth = 220;   // slightly wider
-        int buttonHeight = 50;   // slightly taller
-        int margin = 20;
+        // --- Dimmed Background ---
+        SolidBrush dimBrush(Color(200, 0, 0, 0));
+        graphics.FillRectangle(&dimBrush, 0, 0, width, height);
 
-        int centerX = width / 2;
-        int buttonX = centerX - (buttonWidth / 2);
-        int buttonY = height - buttonHeight - margin;
+        int modalWidth = 420;
+        int modalHeight = 200;
+        int modalX = (width - modalWidth) / 2;
+        int modalY = (height - modalHeight) / 2;
 
-        updateButtonRect = {
-            buttonX,
-            buttonY,
-            buttonX + buttonWidth,
-            buttonY + buttonHeight
+        RectF modalRectF((REAL)modalX, (REAL)modalY, (REAL)modalWidth, (REAL)modalHeight);
+        
+        GraphicsPath modalPath;
+        float mr = 12.0f;
+        modalPath.AddArc(modalRectF.X, modalRectF.Y, mr * 2, mr * 2, 180, 90);
+        modalPath.AddArc(modalRectF.X + modalRectF.Width - mr * 2, modalRectF.Y, mr * 2, mr * 2, 270, 90);
+        modalPath.AddArc(modalRectF.X + modalRectF.Width - mr * 2, modalRectF.Y + modalRectF.Height - mr * 2, mr * 2, mr * 2, 0, 90);
+        modalPath.AddArc(modalRectF.X, modalRectF.Y + modalRectF.Height - mr * 2, mr * 2, mr * 2, 90, 90);
+        modalPath.CloseFigure();
+
+        SolidBrush modalBg(Color(255, 30, 30, 30));
+        graphics.FillPath(&modalBg, &modalPath);
+        graphics.DrawPath(&accentPen, &modalPath);
+
+        StringFormat centerAlign;
+        centerAlign.SetAlignment(StringAlignmentCenter);
+        centerAlign.SetLineAlignment(StringAlignmentCenter);
+
+        RectF titleRect(modalRectF.X, modalRectF.Y + 30, modalRectF.Width, 30);
+        std::wstring updateTitle = L"New Update Available: v" + std::wstring(latestVersion.begin(), latestVersion.end());
+        graphics.DrawString(updateTitle.c_str(), -1, &headingFont, titleRect, &centerAlign, &accentBrush);
+
+        RectF msgRect(modalRectF.X + 20, modalRectF.Y + 70, modalRectF.Width - 40, 40);
+        SolidBrush msgBrush(Color(200, 200, 200));
+        graphics.DrawString(L"A new version is available. Would you like to update MouseShifter now?", -1, &rowFont, msgRect, &centerAlign, &msgBrush);
+
+        // Buttons
+        float btnW = 120;
+        float btnH = 40;
+        float btnY = modalY + 130;
+        float btnGap = 40;
+
+        auto DrawUpdateBtn = [&](float x, float y, float w, float h, const wchar_t* text, bool hovered, bool isPrimary) {
+            RectF r(x, y, w, h);
+            GraphicsPath bp;
+            float br_ = 8.0f;
+            bp.AddArc(r.X, r.Y, br_ * 2, br_ * 2, 180, 90);
+            bp.AddArc(r.X + r.Width - br_ * 2, r.Y, br_ * 2, br_ * 2, 270, 90);
+            bp.AddArc(r.X + r.Width - br_ * 2, r.Y + r.Height - br_ * 2, br_ * 2, br_ * 2, 0, 90);
+            bp.AddArc(r.X, r.Y + r.Height - br_ * 2, br_ * 2, br_ * 2, 90, 90);
+            bp.CloseFigure();
+            
+            if (isPrimary) {
+                graphics.FillPath(hovered ? &highlightBrush : &accentBrush, &bp);
+            } else {
+                graphics.FillPath(hovered ? &highlightBrush : &darkBrush, &bp);
+            }
+            graphics.DrawPath(&accentPen, &bp);
+            graphics.DrawString(text, -1, &rowFont, r, &centerAlign, (isPrimary && !hovered) ? &darkBrush : &valueBrush);
+            return RECT{(int)x, (int)y, (int)(x+w), (int)(y+h)};
         };
 
-        // Draw a simple text message with bigger, subtle yellow color
-        FontFamily fontFamily(L"Segoe UI");
-        Font font(&fontFamily, 16, FontStyleRegular, UnitPixel); // bigger font
-        SolidBrush brush(Color(255, 255, 230, 150)); // subtle yellow
-
-        StringFormat format;
-        format.SetAlignment(StringAlignmentCenter);
-        format.SetLineAlignment(StringAlignmentCenter);
-
-        RectF rectF((REAL)updateButtonRect.left, (REAL)updateButtonRect.top, (REAL)buttonWidth, (REAL)buttonHeight);
-        graphics.DrawString(L"Update available, click here", -1, &font, rectF, &format, &brush);
+        POINT cursor; GetCursorPos(&cursor); ScreenToClient(hwnd, &cursor);
+        g_modalActionRect = DrawUpdateBtn(modalX + (modalWidth - (btnW*2 + btnGap))/2, btnY, btnW, btnH, L"Yes, Update", PtInRect(&g_modalActionRect, cursor), true);
+        g_modalCancelRect = DrawUpdateBtn(modalX + (modalWidth - (btnW*2 + btnGap))/2 + btnW + btnGap, btnY, btnW, btnH, L"Not Now", PtInRect(&g_modalCancelRect, cursor), false);
     }
 
     if (creatingNewProfile)

@@ -26,6 +26,20 @@ jobs:
     - name: Restore NuGet Packages
       run: nuget restore MouseShifter.sln
 
+    - name: Get Version from Updater.cpp
+      id: get_version
+      shell: powershell
+      run: |
+        $content = Get-Content "MouseShifter/Core/System/Updater.cpp"
+        if ($content -match 'currentVersion = \"([0-9.]+)\"') {
+          $version = $matches[1]
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Found version: $version"
+        } else {
+          echo "Could not find version in Updater.cpp"
+          exit 1
+        }
+
     - name: Build MouseShifter (x64 Release)
       run: msbuild MouseShifter.sln /p:Configuration=Release /p:Platform=x64
 
@@ -40,11 +54,13 @@ jobs:
         name: MouseShifter-Full-Bundle
         path: MouseShifter_Release.zip
 
-    - name: Create GitHub Release (CD)
-      if: startsWith(github.ref, 'refs/tags/v')
+    - name: Create / Update GitHub Tag & Release
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: v${{ steps.get_version.outputs.VERSION }}
         files: MouseShifter_Release.zip
-        body: "Automated release of MouseShifter version ${{ github.ref_name }}"
+        body: "Automated release of MouseShifter version v${{ steps.get_version.outputs.VERSION }}"
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

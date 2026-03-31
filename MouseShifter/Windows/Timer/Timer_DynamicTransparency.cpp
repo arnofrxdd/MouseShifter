@@ -1,4 +1,4 @@
-﻿        // Dynamic transparency (only for borderless mode)
+        // Dynamic transparency (only for borderless mode)
 // Dynamic transparency (only for borderless mode)
         if (isBorderless && !useXInput && isTransparent && dynamicTransparencyEnabled)
         {
@@ -158,6 +158,7 @@
         static bool lastUpdateAvailable = false;
         if (updateAvailable && !lastUpdateAvailable)
         {
+            showUpdateModal = true; // Trigger the modal pop-up!
             InvalidateRect(hwnd, nullptr, FALSE);
         }
         lastUpdateAvailable = updateAvailable;

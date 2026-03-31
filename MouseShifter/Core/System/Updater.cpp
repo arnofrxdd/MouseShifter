@@ -20,10 +20,12 @@ bool IsInternetAvailable()
     return InternetGetConnectedState(&flags, 0) != 0;
 }
 
-std::string currentVersion = "5.0";
+std::string currentVersion = "6.0";
 bool updateAvailable = false;
+bool showUpdateModal = false;
 std::string latestVersion = "";
 RECT updateButtonRect;
+RECT updateSubtleBtnRect; // Defined here for global access
 bool checkingForUpdates = false;
 
 #define DBGPRINT(fmt, ...) { char buf[512]; sprintf_s(buf, fmt, __VA_ARGS__); OutputDebugStringA(buf); }
@@ -227,59 +229,68 @@ void PerformUpdate()
 
     DBGPRINT("[Update] Download successful: %S\n", tempZipPath.c_str());
 
-    if (!ExtractZipNew(tempZipPath, exeDir))
+    // Modern "Hand-Off" Update Strategy:
+    // 1. Download zip
+    // 2. Launch a single PowerShell command that waits, extracts, replaces, and restarts
+    // 3. Exit IMMEDIATELY to free file locks
+
+    std::wstring exeDirW = exeDir;
+    std::wstring exePathW = exePath;
+    std::wstring tempZipPathW = tempZipPath;
+    std::wstring tempFolderW = exeDir + L"\\update_temp";
+
+    // This is the "God Script": It waits for MouseShifter to die, extracts, cleans, and restarts.
+    std::wstring psCommand = 
+        L"-NoProfile -ExecutionPolicy Bypass -Command \""
+        L"Start-Sleep -s 1; "
+        L"$proc = Get-Process -Name 'MouseShifter' -ErrorAction SilentlyContinue; "
+        L"if ($proc) { $proc | Stop-Process -Force; Start-Sleep -s 1; } "
+        L"$zip = '" + tempZipPathW + L"'; "
+        L"$dest = '" + exeDirW + L"'; "
+        L"$temp = '" + tempFolderW + L"'; "
+        L"try { "
+        L"  Expand-Archive -Path $zip -DestinationPath $temp -Force; "
+        L"  Get-ChildItem -Path $temp -Recurse | ForEach-Object { "
+        L"    $target = Join-Path $dest $_.Fullname.Substring($temp.Length + 1); "
+        L"    if ($_.PsIsContainer) { if (!(Test-Path $target)) { New-Item $target -ItemType Directory | Out-Null } } "
+        L"    else { if ($_.Name -notmatch 'config.ini|gearlayouts.ini|profiles') { Copy-Item $_.FullName $target -Force } } "
+        L"  }; "
+        L"} catch { Write-Error $_; } finally { "
+        L"  Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue; "
+        L"  Remove-Item $zip -Force -ErrorAction SilentlyContinue; "
+        L"  Start-Process -FilePath '" + exePathW + L"'; "
+        L"} \"";
+
+    DBGPRINT("[Update] Launching Modern PS Dispatcher...\n");
+
+    // Launch PowerShell directly without a batch file
+    STARTUPINFOW si = { sizeof(si) };
+    PROCESS_INFORMATION pi = { 0 };
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE; // Run it silently
+
+    wchar_t psPath[MAX_PATH];
+    ExpandEnvironmentStringsW(L"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", psPath, MAX_PATH);
+
+    std::wstring fullCmd = L"\"" + std::wstring(psPath) + L"\" " + psCommand;
+    wchar_t* cmdBuffer = _wcsdup(fullCmd.c_str());
+
+    if (CreateProcessW(NULL, cmdBuffer, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
     {
-        DBGPRINT("[Update] ExtractZipNew failed\n");
-        return;
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        free(cmdBuffer);
+        
+        DBGPRINT("[Update] Hand-off successful. Exiting app.\n");
+        // Exit fast to let PS take over
+        _exit(0);
     }
-    // Create updater batch that force-closes old instance, replaces files, and restarts
-    HANDLE hBat = CreateFileW(updaterPath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hBat == INVALID_HANDLE_VALUE)
+    else
     {
-        DBGPRINT("[Update] Failed to create updater batch: %S, error: %lu\n", updaterPath.c_str(), GetLastError());
-        return;
+        free(cmdBuffer);
+        DBGPRINT("[Update] CreateProcessW failed, error: %lu\n", GetLastError());
+        MessageBoxW(NULL, L"The update dispatcher failed to start. Try running as Admin.", L"Update Hand-off Failed", MB_OK | MB_ICONERROR);
     }
-
-    std::string batContent =
-        "@echo off\n"
-        "echo Updating MouseShifter...\n"
-        "timeout /t 1 /nobreak >nul\n"
-        "setlocal enabledelayedexpansion\n"
-        "REM Force close old MouseShifter.exe if running\n"
-        "taskkill /IM MouseShifter.exe /F >nul 2>&1\n"
-        "REM Move updated files except configs\n"
-        "for %%f in (\"" + std::string(exeDir.begin(), exeDir.end()) + "\\update_temp\\*\") do (\n"
-        "  set \"fname=%%~nxf\"\n"
-        "  if /i not \"!fname!\"==\"config.ini\" if /i not \"!fname!\"==\"gearlayouts.ini\" (\n"
-        "    move /Y \"%%f\" \"" + std::string(exeDir.begin(), exeDir.end()) + "\\\" >nul\n"
-        "  )\n"
-        ")\n"
-        "rd /s /q \"" + std::string(exeDir.begin(), exeDir.end()) + "\\update_temp\" >nul\n"
-        "del \"" + std::string(tempZipPath.begin(), tempZipPath.end()) + "\" >nul 2>&1\n"
-        "REM Start new MouseShifter.exe\n"
-        "start \"\" \"" + std::string(exePath.begin(), exePath.end()) + "\"\n"
-        "del \"%~f0\" >nul 2>&1\n";
-
-    DWORD written;
-    WriteFile(hBat, batContent.c_str(), batContent.length(), &written, NULL);
-    CloseHandle(hBat);
-
-    DBGPRINT("[Update] Updater batch created: %S\n", updaterPath.c_str());
-
-    // Launch updater batch
-    SHELLEXECUTEINFOW sei{ sizeof(sei) };
-    sei.lpFile = updaterPath.c_str();
-    sei.nShow = SW_HIDE;
-    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-    if (!ShellExecuteExW(&sei))
-    {
-        DBGPRINT("[Update] Failed to launch updater batch, error: %lu\n", GetLastError());
-        return;
-    }
-
-    DBGPRINT("[Update] Updater launched, quitting app.\n");
-    Sleep(500);
-    PostQuitMessage(0);
 }
 
 
