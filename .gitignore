@@ -1,4 +1,3 @@
-
 # Visual Studio
 .vs/
 *.db
@@ -10,13 +9,10 @@
 *.userosscache
 *.sln.doccache
 
-# Build outputs
+# Build outputs (Global)
 [Dd]ebug/
 [Rr]elease/
 x64/
-RawMouse/x64/
-RawMouse/Debug/
-RawMouse/Release/
 *.pdb
 *.obj
 *.iobj
@@ -28,19 +24,29 @@ RawMouse/Release/
 *.exe
 *.dll
 *.lib
+*.recipe
+*.ilk
+*.res
+*.enc
+*.FileListAbsolute.txt
+*.CopyComplete
 
-# Allow libraries and DLLs in project folders
-!MouseShifter/SDL2 LIBS/lib/x64/SDL2.dll
-!MouseShifter/SDL2 LIBS/lib/x64/SDL2.lib
-!MouseShifter/SDL2 LIBS/lib/x64/SDL2main.lib
-!MouseShifter/SDL2 LIBS/lib/x86/SDL2.dll
-!MouseShifter/SDL2 LIBS/lib/x86/SDL2.lib
-!MouseShifter/SDL2 LIBS/lib/x86/SDL2main.lib
+# --- EXCEPTIONS: UNLOCK LIBRARIES ---
+# We must un-ignore the folders first, then the files
+!MouseShifter/SDL2\ LIBS/
+!MouseShifter/SDL2\ LIBS/lib/
+!MouseShifter/SDL2\ LIBS/lib/x64/
+!MouseShifter/SDL2\ LIBS/lib/x64/SDL2.dll
+!MouseShifter/SDL2\ LIBS/lib/x64/SDL2.lib
+!MouseShifter/SDL2\ LIBS/lib/x64/SDL2main.lib
+
+!MouseShifter/vJoy/
 !MouseShifter/vJoy/vJoyInterface.dll
 !MouseShifter/vJoy/vJoyInterface.lib
-!MouseShifter/*.dll
-!MouseShifter/*.lib
+
+# Allow the specific DLLs in the source root
+!MouseShifter/RawMouseInput.dll
+!MouseShifter/xInputBlocker.dll
 
 # Packages
 packages/
-
