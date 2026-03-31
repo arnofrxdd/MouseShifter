@@ -58,7 +58,7 @@ using namespace Gdiplus;
 
 bool showSettingsPanel = true;
 RECT settingsPanelRect;
-bool isNeutralEnabled = true; // default enabled
+bool isNeutralEnabled = false; // default disabled
 bool prevShowSettingsPanel = false;
 bool prevShowKeybindPanel = false;
 bool prevShowInputPanel = false;

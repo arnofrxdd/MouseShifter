@@ -20,7 +20,7 @@ bool IsInternetAvailable()
     return InternetGetConnectedState(&flags, 0) != 0;
 }
 
-std::string currentVersion = "6.0";
+std::string currentVersion = "6.0.1";
 bool updateAvailable = false;
 bool showUpdateModal = false;
 std::string latestVersion = "";
