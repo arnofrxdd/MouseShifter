@@ -1,0 +1,52 @@
+# MouseShifter CodeQL Security Analysis
+name: "CodeQL Analysis"
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  schedule:
+    - cron: '30 18 * * 1' # Run every Monday at 18:30 UTC
+
+jobs:
+  analyze:
+    name: Analyze C++ Code
+    runs-on: windows-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality # Standard security queries + code quality
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v1
+      
+    - name: Restore NuGet Packages
+      run: nuget restore MouseShifter.sln
+
+    # CodeQL needs a full build to "trace" the C++ code
+    - name: Build MouseShifter (x64 Release)
+      run: msbuild MouseShifter.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
