@@ -358,56 +358,59 @@
             std::string knobLabel = activeGear;
             if (gearLabelOverride.find(activeGear) != gearLabelOverride.end())
                 knobLabel = gearLabelOverride[activeGear];
+            
+			// determine the string(s) to draw based on active gear and layout (some layouts show paired high gear on the knob)
             std::wstring lowW(knobLabel.begin(), knobLabel.end());
-
-            // Dynamic font sizing
-            RectF measuredRect;
-            Font* knobFont = nullptr;
-            float fontSize = static_cast<float>(knobRadius);
-            float maxTextHeight = knobRadius * 0.8f;
-
-            while (fontSize > 4.0f)
+            std::string pairedHighGear;
+			// if the active gear is not reverse, we can show the paired high gear on the knob for certain layouts 
+            // (will be the same as low gear number +6 or +8 depending on 6 or 16 gear set)
+            if (activeGear != "R")
             {
-                if (knobFont) delete knobFont;
-                knobFont = new Font(L"Segoe UI", fontSize, FontStyleBold, UnitPixel);
-                graphics.MeasureString(lowW.c_str(), -1, knobFont, PointF(0, 0), &measuredRect);
-
-                if (measuredRect.Width <= knobRadius * 1.8f && measuredRect.Height <= maxTextHeight)
-                    break;
-
-                fontSize -= 1.0f;
+                int lowNum = std::stoi(activeGear);
+                pairedHighGear = std::to_string(is16GearSet ? lowNum + 8 : lowNum + 6);
+                if (gearLabelOverride.find(pairedHighGear) != gearLabelOverride.end())
+                    pairedHighGear = gearLabelOverride[pairedHighGear];
             }
+            std::wstring highW(pairedHighGear.begin(), pairedHighGear.end());
 
             bool hideHighGearsForLayout = hideHighGears;
-            if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9 || layoutType == 11)
+			if (layoutType == 5 || layoutType == 6 || layoutType == 7 || layoutType == 8 || layoutType == 9 || layoutType == 11)
             {
                 hideHighGearsForLayout = true;
             }
 
-            if (hideHighGearsForLayout)
+            // Dynamic font sizing
+            // will depend on knob radius and number of characters in the label (and whether high gears are shown)
+            RectF measuredRect;
+            Font* knobFont = nullptr;
+            int charCount = hideHighGearsForLayout? max(lowW.size(), size_t(1)):max(max(lowW.size(), size_t(1)), highW.size()); // Avoid division by zero
+            float fontSize = static_cast<float>(knobRadius);
+			float maxTextHeight = knobRadius * 0.8f; // Max height for the text based on knob size and padding
+            float maxTextWidth = knobRadius * 1.8f; // Max width for the text based on knob size and padding
+
+            // label rect will always be knobRadius * 1.8f;
+            // aspect ratio of height:width = 0.8:1.8
+            measuredRect.Width = maxTextWidth;
+            // modify the rectangle height based on character count to prevent overflow for multi-digit labels, but cap it at maxTextHeight
+			measuredRect.Height = min(maxTextHeight, (maxTextWidth * 0.8f) / (charCount * 1.8f)); 
+            fontSize = max(measuredRect.Height, 15.0f); // font size is based on the measured height, but don't go below 15
+            knobFont = new Font(L"Segoe UI", fontSize, FontStyleBold, UnitPixel);
+
+            if (hideHighGearsForLayout || activeGear == "R")
             {
                 PointF centerPos(knobPos.x, knobPos.y);
                 graphics.DrawString(lowW.c_str(), -1, knobFont, centerPos, &format, &knobTextBrush);
             }
             else
             {
-                float gapFactor = 0.3f;
+                float gapFactor = 0.4f;
                 float relativePadding = knobRadius * 0.1f;
 
                 PointF lowPos(knobPos.x, knobPos.y - measuredRect.Height * gapFactor - relativePadding);
                 graphics.DrawString(lowW.c_str(), -1, knobFont, lowPos, &format, &knobTextBrush);
 
-                if (activeGear != "R")
-                {
-                    int lowNum = std::stoi(activeGear);
-                    std::string pairedHighGear = std::to_string(is16GearSet ? lowNum + 8 : lowNum + 6);
-                    if (gearLabelOverride.find(pairedHighGear) != gearLabelOverride.end())
-                        pairedHighGear = gearLabelOverride[pairedHighGear];
-
-                    std::wstring highW(pairedHighGear.begin(), pairedHighGear.end());
-                    PointF highPos(knobPos.x, knobPos.y + measuredRect.Height * gapFactor + relativePadding);
-                    graphics.DrawString(highW.c_str(), -1, knobFont, highPos, &format, &knobTextBrush);
-                }
+                PointF highPos(knobPos.x, knobPos.y + measuredRect.Height * gapFactor + relativePadding);
+                graphics.DrawString(highW.c_str(), -1, knobFont, highPos, &format, &knobTextBrush);
             }
 
             delete knobFont;
