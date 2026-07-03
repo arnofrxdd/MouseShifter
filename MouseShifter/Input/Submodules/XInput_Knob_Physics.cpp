@@ -65,7 +65,7 @@
             if (neutralHeld)
             {
                 GearInput gi = gearInputMap["N"];
-                if (gi.type == KEYBOARD)
+                if (gi.type == KEYBOARD_GEARSTATE)
                 {
                     INPUT input = {};
                     input.type = INPUT_KEYBOARD;
@@ -309,7 +309,7 @@
         if (neutralHeld)
         {
             GearInput gi = gearInputMap["N"];
-            if (gi.type == KEYBOARD)
+            if (gi.type == KEYBOARD_GEARSTATE)
             {
                 INPUT input = {};
                 input.type = INPUT_KEYBOARD;

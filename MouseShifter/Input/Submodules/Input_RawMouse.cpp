@@ -19,7 +19,28 @@
 
     for (auto& mapping : inputMap)
     {
-        if (mapping.type == KEYBOARD && raw->header.dwType == RIM_TYPEKEYBOARD)
+        if (mapping.type == KEYBOARD_GEARSTATE && raw->header.dwType == RIM_TYPEKEYBOARD)
+        {
+            RAWKEYBOARD& kb = raw->data.keyboard;
+
+            if (kb.Message == WM_KEYDOWN && kb.VKey == mapping.code)
+            {
+                if (lastPressedButtonCode != mapping.vjoyButton)
+                {
+                    // Release the last pressed button if it's different
+                    if (lastPressedButtonCode != -1)
+                    {
+                        SetBtn(false, vjoyDeviceId, lastPressedButtonCode);
+                        buttonPressedState[lastPressedButtonCode] = false; // mark released
+                    }
+                    // Press the new button
+                    SetBtn(true, vjoyDeviceId, mapping.vjoyButton);
+                    buttonPressedState[mapping.vjoyButton] = true;  // <--- add this
+                    lastPressedButtonCode = mapping.vjoyButton;    // update last pressed button
+                }
+            }
+        }
+        else if (mapping.type == KEYBOARD && raw->header.dwType == RIM_TYPEKEYBOARD)
         {
             RAWKEYBOARD& kb = raw->data.keyboard;
 
