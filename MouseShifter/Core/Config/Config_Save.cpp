@@ -105,6 +105,9 @@
         case KEYBOARD:
             typeStr = "KEYBOARD";
             break;
+		case KEYBOARD_GEARSTATE:
+            typeStr = "KEYBOARD_GEARSTATE";
+			break;
         case MOUSE:
             typeStr = "MOUSE";
             break;
@@ -135,6 +138,9 @@
         case KEYBOARD:
             typeStr = "KEYBOARD";
             break;
+		case KEYBOARD_GEARSTATE:
+			typeStr = "KEYBOARD_GEARSTATE";
+			break;
         case MOUSE:
             typeStr = "MOUSE";
             break;
