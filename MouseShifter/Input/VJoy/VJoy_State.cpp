@@ -1,6 +1,7 @@
 enum InputType
 {
-    KEYBOARD,
+    KEYBOARD, // will hold inputstate until key is released, for splitter button
+    KEYBOARD_GEARSTATE, // will hold inputstate after key is release and before a new KEYBOARD_HOLD type is pressed, targetted for gear state buttons
     MOUSE,
     VJOY_BUTTON
 };

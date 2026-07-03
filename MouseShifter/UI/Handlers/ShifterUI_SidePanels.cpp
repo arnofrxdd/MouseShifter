@@ -119,7 +119,7 @@
             {
                 GearInput input = gearInputMap[gear];
                 std::string keyNameStr = "Unknown";
-                if (input.type == KEYBOARD) {
+                if (input.type == KEYBOARD_GEARSTATE || input.type == KEYBOARD) {
                     char buffer[64];
                     if (GetKeyNameTextA(MapVirtualKey(input.code, MAPVK_VK_TO_VSC) << 16, buffer, 64) > 0)
                         keyNameStr = buffer;
@@ -241,7 +241,7 @@
                 InputToVJoy& input = inputMap[i];
                 std::wstring keyName = L"Unknown";
 
-                if (input.type == KEYBOARD) {
+                if (input.type == KEYBOARD || input.type == KEYBOARD_GEARSTATE) {
                     wchar_t buffer[64];
                     if (GetKeyNameTextW(MapVirtualKeyW(input.code, MAPVK_VK_TO_VSC) << 16, buffer, 64) > 0)
                         keyName = buffer;

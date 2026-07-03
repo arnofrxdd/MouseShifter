@@ -14,7 +14,7 @@ void SetGearKey(std::string gear)
     // Release previous key/button
     if (heldGearKey != 0 && heldGearKey != gi.code)
     {
-        if (heldGearType == KEYBOARD)
+        if (heldGearType == KEYBOARD_GEARSTATE)
         {
             INPUT input = {};
             input.type = INPUT_KEYBOARD;
@@ -38,7 +38,7 @@ void SetGearKey(std::string gear)
     }
 
     // Press new key/button
-    if (gi.type == KEYBOARD)
+    if (gi.type == KEYBOARD_GEARSTATE)
     {
         INPUT input = {};
         input.type = INPUT_KEYBOARD;
@@ -78,7 +78,7 @@ void ReleaseGearKey()
     lastSetGear = ""; // Reset change detection
     if (heldGearKey != 0)
     {
-        if (heldGearType == KEYBOARD)
+        if (heldGearType == KEYBOARD_GEARSTATE)
         {
             INPUT input = {};
             input.type = INPUT_KEYBOARD;

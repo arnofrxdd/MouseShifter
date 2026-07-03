@@ -26,6 +26,7 @@ bool realKnobSnapped = false;
 bool ghostKnobSnapped = false;
 bool g_reverseAuthorizedOnRail = false;
 std::map<int, bool> buttonPressedState;
+int lastPressedButtonCode = -1; // Track the last pressed button for to keep holding gear state until new gear is pressed for keyboard shifter
 std::map<std::wstring, bool> g_collapsedSections; // Tracks expanded/collapsed state of headings
 
 // Forward declarations for Reverse Lock Fix

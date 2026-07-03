@@ -89,7 +89,7 @@
                         if (element.label == L"Enable Neutral") {
                              if (!isNeutralEnabled && neutralHeld) {
                                 GearInput gi = gearInputMap["N"];
-                                if (gi.type == KEYBOARD) {
+                                if (gi.type == KEYBOARD_GEARSTATE) {
                                     INPUT input = {}; input.type = INPUT_KEYBOARD; input.ki.wVk = gi.code; input.ki.dwFlags = KEYEVENTF_KEYUP;
                                     SendInput(1, &input, sizeof(INPUT));
                                 } else if (gi.type == MOUSE) {

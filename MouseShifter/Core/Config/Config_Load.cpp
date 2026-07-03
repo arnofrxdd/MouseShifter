@@ -165,6 +165,9 @@
         case KEYBOARD:
             defaultTypeStr = "KEYBOARD";
             break;
+        case KEYBOARD_GEARSTATE:
+            defaultTypeStr = "KEYBOARD_GEARSTATE";
+            break;
         case MOUSE:
             defaultTypeStr = "MOUSE";
             break;
@@ -182,6 +185,8 @@
         // Parse type string
         if (strcmp(buf, "KEYBOARD") == 0)
             kv.second.type = KEYBOARD;
+        if (strcmp(buf, "KEYBOARD_GEARSTATE") == 0)
+            kv.second.type = KEYBOARD_GEARSTATE;
         else if (strcmp(buf, "MOUSE") == 0)
             kv.second.type = MOUSE;
         else if (strcmp(buf, "VJOY") == 0)
@@ -196,7 +201,7 @@
             configSection, codeKey.c_str(), defaultCode, buf, sizeof(buf), configFile.c_str());
         kv.second.code = (WORD)atoi(buf);
 
-        std::cout << kv.first << " loaded: type=" << (kv.second.type == KEYBOARD ? "KEYBOARD" : "MOUSE")
+        std::cout << kv.first << " loaded: type=" << (kv.second.type == KEYBOARD ? "KEYBOARD" : (kv.second.type == KEYBOARD_GEARSTATE ? "KEYBOARD_GEARSTATE" : kv.second.type == MOUSE ? "MOUSE" : "VJOY"))
             << " code=" << kv.second.code
             << " (charsRead=" << charsRead << ")" << std::endl;
     }
@@ -207,6 +212,8 @@
     // Read the count of entries
     GetPrivateProfileStringA(configSection, "InputMapCount", "0", buf, sizeof(buf), configFile.c_str());
     size_t count = (size_t)atoi(buf);
+	// read how many mouse input map, we keep track of this to disable knob movement when profile is full keyboard binds
+	int countMouseInput = 0;
 
     for (size_t i = 0; i < count; ++i)
     {
@@ -218,17 +225,27 @@
 
         InputToVJoy entry;
         entry.type = KEYBOARD;
-        entry.code = 0;
+        entry.code = 1;
         entry.vjoyButton = 0;
 
         GetPrivateProfileStringA(configSection, typeKey.c_str(), "KEYBOARD", buf, sizeof(buf), configFile.c_str());
         if (strcmp(buf, "KEYBOARD") == 0)
+        {
             entry.type = KEYBOARD;
+        }
+        else if (strcmp(buf, "KEYBOARD_GEARSTATE") == 0)
+        {
+            entry.type = KEYBOARD_GEARSTATE;
+        }
         else if (strcmp(buf, "MOUSE") == 0)
+        {
             entry.type = MOUSE;
+			countMouseInput++;
+        }
         else if (strcmp(buf, "VJOY") == 0)
+        {
             entry.type = VJOY_BUTTON;
-
+        }
         GetPrivateProfileStringA(configSection, codeKey.c_str(), "0", buf, sizeof(buf), configFile.c_str());
         entry.code = (WORD)atoi(buf);
 
@@ -236,6 +253,20 @@
         entry.vjoyButton = (UINT)atoi(buf);
 
         inputMap.push_back(entry);
+		// as profile is changing, reset all vJoy button states to false to avoid stuck buttons when 
+        // switching between keyboard and mouse profiles
+        SetBtn(false, vjoyDeviceId, i);
+    }
+
+	// disable knob movement if no mouse inputs are configured, since keyboard inputs won't trigger the mouse movement logic at all and 
+    // it would be confusing to have it enabled with no effect
+	// it should always be modified at each call of load config to reflect the current config state, in case user changes between full keyboard bind and mixed or mouse binds
+    knobMovementEnabled = (countMouseInput > 0);
+    // keyboard only activated so reset all button states
+    if (countMouseInput > 0) {
+        buttonPressedState[lastPressedButtonCode] = false;
+        SetBtn(false, vjoyDeviceId, lastPressedButtonCode);
+		lastPressedButtonCode = -1; // reset last pressed button code
     }
 
     // If inputMap is empty, or missing entries, fill in fallback defaults
